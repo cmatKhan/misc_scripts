@@ -31,8 +31,8 @@ def main(argv):
     """
         main method
     """
+    args = parseArgs(argv)
     print('...parsing input')
-    args = parse_args(argv)
     try:
         if not os.path.isfile(args.genome):
             raise FileNotFoundError('GenomeFileNotFound')
@@ -70,7 +70,7 @@ def main(argv):
         print('%s not found in %s' %(scaffold_to_remove_set, genome_fasta_path))
 
 
-def parse_args(argv):
+def parseArgs(argv):
     parser = argparse.ArgumentParser(
         description="filter scaffold from genome fasta")
     parser.add_argument("-g", "--genome", required=True,
