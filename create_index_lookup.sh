@@ -15,10 +15,10 @@
 # loop over all .bam files in align_count_results/*/align
 for align_file in /scratch/mblab/${USER}/rnaseq_pipeline/align_count_results/*/align/*.bam; do
     # if the .bam.bai file does not exist, then
-    if [ ! -f ${align_file}.bai]; then
+    if [ ! -f ${align_file}.bai ]; then
         # add the file to the look_up list
-        echo ${align_file} >> /scratch/mblab/${USER}/rnaseq_pipeline/job_scripts/${1}_lookup.txt
+        echo ${align_file} #>> /scratch/mblab/${USER}/rnaseq_pipeline/job_scripts/${1}_lookup.txt
     fi
 done
 
-print "Look up file at: /scratch/mblab/${USER}/rnaseq_pipeline/job_scripts/${1}_lookup.txt":wq
+print "Look up file at: /scratch/mblab/${USER}/rnaseq_pipeline/job_scripts/${1}_lookup.txt"
