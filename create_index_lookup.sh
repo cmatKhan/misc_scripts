@@ -18,5 +18,7 @@ for align_file in /scratch/mblab/${USER}/rnaseq_pipeline/align_count_results/*/a
     if [ ! -f ${align_file}.bai]; then
         # add the file to the look_up list
         echo ${align_file} >> /scratch/mblab/${USER}/rnaseq_pipeline/job_scripts/${1}_lookup.txt
+    fi
+done
 
-print "Look up file at: /scratch/mblab/${USER}/rnaseq_pipeline/job_scripts/${1}_lookup.txt"
+print "Look up file at: /scratch/mblab/${USER}/rnaseq_pipeline/job_scripts/${1}_lookup.txt":wq
