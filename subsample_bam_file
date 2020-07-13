@@ -7,7 +7,7 @@
 # INPUT $1: the bam file
 # INPUT $2: genome .fasta
 
-if (( $# -ls 2 )); then
+if (( $# < 2 )); then
   echo 'Less than two arguments were passed. $1 should be the bam file, $2 should be the genome'
   exit 1
 fi
