@@ -9,7 +9,7 @@
 
 num_args=$(echo $#)
 
-if [[ ${num_args} -ls 2]]:; then
+if [[ ${num_args} -ls 2]]; then
   echo 'Less than two arguments were passed. $1 should be the bam file, $2 should be the genome'
   exit 1
 fi
