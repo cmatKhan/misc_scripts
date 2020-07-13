@@ -7,6 +7,11 @@
 # INPUT $1: the bam file
 # INPUT $2: genome .fasta
 
+if [ $# -ls 2]; then
+  echo 'Less than two arguments were passed. $1 should be the bam file, $2 should be the genome'
+  exit 1
+fi
+
 input_bam=$1
 no_path_input_bam=${input_bam##*/}
 basename_no_ext=${no_path_input_bam%_sorted_aligned_reads_with_annote.bam}
@@ -42,7 +47,6 @@ for power in {11..26};do
       # use sametools with the given seed (see outer loop) and the fraction of the library to subset thereads
       #echo "subsetting out ${power_of_two} reads, replicate ${seed}, with seed_frac ${seed_frac}"
       #samtools view -bs ${seed_frac} ${protein_coding_library} > ${basename_no_ext}_${seed}_${power}_protein_coding_subset.bam
-    else
   fi
   done
 done
