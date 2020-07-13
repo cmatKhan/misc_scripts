@@ -29,20 +29,20 @@ name=$3
 strandedness=$4
 annotation_file=$5
 
-# # create sample_dir and job_scripts in $PWD
-# sample_dir=${name}_samples
-# mkdir -p ${sample_dir}
-# # make job_scripts directory
-# mkdir -p job_scripts
-# # copy this file into job_scripts as well as cmd to execute a given run of this script
-# rsync -aHv $0 ./job_scripts
-# echo "$0 $1 $2 $3 $4 $5" > job_scripts/execution_cmd.sh
-#
-# # create the variables necessary to name the output bamfiles
-# no_path_input_bam=${input_bam##*/}
-# basename_no_ext=${no_path_input_bam%_sorted_aligned_reads_with_annote.bam}
-# filtered_bam_file=${sample_dir}/${basename_no_ext}_protein_coding_counted.bam
-#
+# create sample_dir and job_scripts in $PWD
+sample_dir=${name}_samples
+mkdir -p ${sample_dir}
+# make job_scripts directory
+mkdir -p job_scripts
+# copy this file into job_scripts as well as cmd to execute a given run of this script
+rsync -aHv $0 ./job_scripts
+echo "$0 $1 $2 $3 $4 $5" > job_scripts/execution_cmd.sh
+
+# create the variables necessary to name the output bamfiles
+no_path_input_bam=${input_bam##*/}
+basename_no_ext=${no_path_input_bam%_sorted_aligned_reads_with_annote.bam}
+filtered_bam_file=${sample_dir}/${basename_no_ext}_protein_coding_counted.bam
+
 # echo "filtering bam file for unique, unambiguous, protein coding reads"
 # # filter bam and deposit in PWD
 # samtools view -F 4 $1 | grep -v alignment_not_unique | grep -v ambiguous | samtools view -T ${genome} -bS > ${filtered_bam_file}
@@ -58,7 +58,7 @@ annotation_file=$5
 # protein_coding_library=${sample_dir}/${basename_no_ext}_${full_subset_moniker}_protein_coding_subset.bam
 # mv ${filtered_bam_file} ${protein_coding_library}
 # echo "filtered bam in ${protein_coding_library}"
-
+#
 # create samples. largest protein coding count in crypto is 5.6*10^7
 # for power in {11..26};do
 #   for seed in {1..5};do
