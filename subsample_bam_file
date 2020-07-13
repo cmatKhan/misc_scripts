@@ -109,9 +109,9 @@ chmod +x job_scripts/exonic_coverage.py
 # create sbatch script for exon coverage
 printf "#!/bin/bash\n\n" > job_scripts/exon_coverage_${name}.sbatch
 
-printf "#SBATCH --mem=20G\n#SBATCH --array=1-${num_samples}%%20\n#SBATCH -D ./" >> job_scripts/exon_coverage_${name}.sbatch
+printf "#SBATCH --mem=20G\n#SBATCH --array=1-${num_samples}%%20\n#SBATCH -D ./\n#SBATCH -o sbatch_log/exon_coverage_slurm.out\n\n" >> job_scripts/exon_coverage_${name}.sbatch
 
-printf "\n\nml rnaseq_pipeline\n\n" >> job_scripts/exon_coverage_${name}.sbatch
+printf "ml rnaseq_pipeline\n\n" >> job_scripts/exon_coverage_${name}.sbatch
 
 printf "read bam_file < <( sed -n ${SLURM_ARRAY_TASK_ID}p ${subset_bam_file_list} )\n\n" >> job_scripts/exon_coverage_${name}.sbatch
 
@@ -120,9 +120,9 @@ printf "job_scripts/exonic_coverage.py \${bam_file} ${name}_count" >> job_script
 # create sbatch script for counts
 printf "#!/bin/bash\n\n" > job_scripts/count_${name}.sbatch
 
-printf "#SBATCH --mem=20G\n#SBATCH --array=1-${num_samples}%%20\n#SBATCH -D ./" >> job_scripts/count_${name}.sbatch
+printf "#SBATCH --mem=20G\n#SBATCH --array=1-${num_samples}%%20\n#SBATCH -D ./\n#SBATCH -o sbatch_log/count_slurm.out\n\n" >> job_scripts/count_${name}.sbatch
 
-printf "\n\nml htseq\n\n" >> job_scripts/count_${name}.sbatch
+printf "ml htseq\n\n" >> job_scripts/count_${name}.sbatch
 
 printf "read bam_file < <( sed -n ${SLURM_ARRAY_TASK_ID}p ${subset_bam_file_list} )\n\n" >> job_scripts/count_${name}.sbatch
 
