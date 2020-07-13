@@ -91,7 +91,8 @@ num_samples=$( cat ${subset_bam_file_list} | wc -l)
 mkdir -p ${name}_count
 # create ${name}_exon coverage directory
 mkdir -p ${name}_exon_coverage directory
-
+# create slurm log directory
+mkdir -p sbatch_log
 
 # create python script for sbatch exon coverage script
 printf "#!/usr/bin/env python\n" > job_scripts/exonic_coverage.py
@@ -113,9 +114,9 @@ printf "#SBATCH --mem=20G\n#SBATCH --array=1-${num_samples}%%20\n#SBATCH -D ./\n
 
 printf "ml rnaseq_pipeline\n\n" >> job_scripts/exon_coverage_${name}.sbatch
 
-printf "read bam_file < <( sed -n ${SLURM_ARRAY_TASK_ID}p ${subset_bam_file_list} )\n\n" >> job_scripts/exon_coverage_${name}.sbatch
+printf "read bam_file < <( sed -n \${SLURM_ARRAY_TASK_ID}p ${subset_bam_file_list} )\n\n" >> job_scripts/exon_coverage_${name}.sbatch
 
-printf "job_scripts/exonic_coverage.py \${bam_file} ${name}_count" >> job_scripts/exon_coverage_${name}.sbatch
+printf "job_scripts/exonic_coverage.py \${bam_file} ${name}_exon_coverage" >> job_scripts/exon_coverage_${name}.sbatch
 
 # create sbatch script for counts
 printf "#!/bin/bash\n\n" > job_scripts/count_${name}.sbatch
@@ -124,7 +125,7 @@ printf "#SBATCH --mem=20G\n#SBATCH --array=1-${num_samples}%%20\n#SBATCH -D ./\n
 
 printf "ml htseq\n\n" >> job_scripts/count_${name}.sbatch
 
-printf "read bam_file < <( sed -n ${SLURM_ARRAY_TASK_ID}p ${subset_bam_file_list} )\n\n" >> job_scripts/count_${name}.sbatch
+printf "read bam_file < <( sed -n \${SLURM_ARRAY_TASK_ID}p ${subset_bam_file_list} )\n\n" >> job_scripts/count_${name}.sbatch
 
 printf "htseq-count -f bam -s ${strandedness} -t exon -i gene \${bam_file} ${annotation_file} 1> ${name}_count/${basename_no_ext}_read_count.tsv 2> ${name}_count/${basename_no_ext}_htseq.log" >> job_scripts/count_${name}.sbatch
 
