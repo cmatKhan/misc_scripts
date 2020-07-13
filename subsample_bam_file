@@ -5,6 +5,7 @@
 # unique alignment
 
 # INPUT $1: the bam file
+# INPUT $2: genome .fasta
 
 input_bam=$1
 no_path_input_bam=${input_bam##*/}
@@ -12,7 +13,7 @@ basename_no_ext=${no_path_input_bam%_sorted_aligned_reads_with_annote.bam}
 filtered_bam_file=${basename_no_ext}_protein_coding_counted.bam
 
 # filter bam and deposit in PWD
-samtools view -b -F 4 $1 | grep -v alignment_not_unique | grep -v ambiguous > ${filtered_bam_file}
+samtools view -F 4 $1 | grep -v alignment_not_unique | grep -v ambiguous | samtools view -T $2 -bS > ${filtered_bam_file}
 
 # get full size of filtered protein coding read library
 protein_coding_library_size=$(samtools view -F 4 $1 | grep -v alignment_not_unique | grep -v ambiguous | wc -l)
@@ -22,7 +23,7 @@ full_subset_moniker=full_${protein_coding_library_size}
 protein_coding_library=${basename_no_ext}_${full_subset_moniker}_protein_coding_subset.bam
 mv ${filtered_bam_file} ${protein_coding_library}
 
-for power in {11..24};do
+for power in {11..26};do
   for seed in {1..5};do
 
     # set power given power of 2 to variable n
