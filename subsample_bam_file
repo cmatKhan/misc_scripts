@@ -21,7 +21,7 @@ filtered_bam_file=${basename_no_ext}_protein_coding_counted.bam
 samtools view -F 4 $1 | grep -v alignment_not_unique | grep -v ambiguous | samtools view -T $2 -bS > ${filtered_bam_file}
 
 # get full size of filtered protein coding read library
-protein_coding_library_size=$(samtools view -F 4 $1 | grep -v alignment_not_unique | grep -v ambiguous | wc -l)
+protein_coding_library_size=$(samtools view ${filtered_bam_file} | wc -l)
 
 # re-name the full protein coding library
 full_subset_moniker=full_${protein_coding_library_size}
@@ -36,7 +36,7 @@ for power in {11..26};do
     echo "power of two is ${power_of_two}"
 
    # get the fraction of the input bam file that the given power_of_two corresponds to
-    frac=$( echo "scale=10 ; ${power_of_two} / ${full_library_size}" | bc )
+    frac=$( echo "scale=10 ; ${power_of_two} / ${protein_coding_library_size}" | bc )
     echo "fraction of protein coding library size is ${frac}"
 
     # drop leading zero from $frac and replace with $seed
