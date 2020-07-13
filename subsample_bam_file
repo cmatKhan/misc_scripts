@@ -33,7 +33,7 @@ mkdir -p ${sample_dir}
 mkdir -p job_scripts
 # copy this file into job_scripts
 rsync -aHv $0 ./job_scripts
-#echo "$0 $1 $2 $3 $4 $5" job_scripts/execution_cmd.sh
+echo "$0 $1 $2 $3 $4 $5" job_scripts/execution_cmd.sh
 
 
 input_bam=$1
