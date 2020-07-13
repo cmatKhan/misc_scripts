@@ -9,25 +9,39 @@
 input_bam=$1
 no_path_input_bam=${input_bam##*/}
 basename_no_ext=${no_path_input_bam%_sorted_aligned_reads_with_annote.bam}
+filtered_bam_file=${basename_no_ext}_protein_coding_counted.bam
+
+# filter bam and deposit in PWD
+samtools view -b -F 4 $1 | grep -v alignment_not_unique | grep -v ambiguous > ${filtered_bam_file}
+
+# get full size of filtered protein coding read library
+protein_coding_library_size=$(samtools view -F 4 $1 | grep -v alignment_not_unique | grep -v ambiguous | wc -l)
+
+# re-name the full protein coding library
+full_subset_moniker=full_${protein_coding_library_size}
+protein_coding_library=${basename_no_ext}_${full_subset_moniker}_protein_coding_subset.bam
+mv ${filtered_bam_file} ${protein_coding_library}
 
 for power in {11..24};do
-  for seed in {1..10};do
+  for seed in {1..5};do
 
     # set power given power of 2 to variable n
     power_of_two=$(echo "2^${power}"|bc)
+    echo "power of two is ${power_of_two}"
 
    # get the fraction of the input bam file that the given power_of_two corresponds to
-    frac=$( samtools idxstats $input_bam | cut -f3 | awk -v "n=$power_of_two" 'BEGIN {total=0} {total += $1} END {frac=n/total; if (frac > 1) {print 1} else {print frac}}' )
+    frac=$( echo "scale=10 ; ${power_of_two} / ${full_library_size}" | bc )
+    echo "fraction of protein coding library size is ${frac}"
 
     # drop leading zero from $frac and replace with $seed
-    if (( $(echo "$frac < 1" |bc -l) )); then
+    if (( $(echo "$frac < 1" | bc -l) )); then
       nozero=$(echo $frac | sed 's/^0*//')
       seed_frac=${seed}${nozero}
+      echo "the seed_frac is ${seed_frac}"
+      # use sametools with the given seed (see outer loop) and the fraction of the library to subset thereads
+      #echo "subsetting out ${power_of_two} reads, replicate ${seed}, with seed_frac ${seed_frac}"
+      #samtools view -bs ${seed_frac} ${protein_coding_library} > ${basename_no_ext}_${seed}_${power}_protein_coding_subset.bam
     else
-      seed_frac=1.1
   fi
-  # use sametools with the given seed (see outer loop) and the fraction of the library to subset thereads
-  echo "working on 2 to the ${power} reads, replicate ${seed}, with seed_frac ${seed_frac}"
-  samtools view -bs ${seed_frac} $input_bam > ${basename_no_ext}_${seed}_${power}_protein_coding_subset.bam
   done
 done
