@@ -127,7 +127,9 @@ printf "ml htseq\n\n" >> job_scripts/count_${name}.sbatch
 
 printf "read bam_file < <( sed -n \${SLURM_ARRAY_TASK_ID}p ${subset_bam_file_list} )\n\n" >> job_scripts/count_${name}.sbatch
 
-printf "sample_name=\${bam_file%%_protein_coding_subset.bam}\n" >> job_scripts/count_${name}.sbatch
+printf "no_path_input_bam=\${bam_file##*/}" >> job_scripts/count_${name}.sbatch
+
+printf "sample_name=\${no_path_input_bam%%_protein_coding_subset.bam}\n" >> job_scripts/count_${name}.sbatch
 
 printf "htseq-count -f bam -s ${strandedness} -t exon -i gene \${bam_file} ${annotation_file} 1> ${name}_count/\${sample_name}_read_count.tsv 2> ${name}_count/\${sample_name}_htseq.log" >> job_scripts/count_${name}.sbatch
 
