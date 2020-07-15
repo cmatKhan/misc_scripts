@@ -98,9 +98,9 @@ mkdir -p sbatch_log
 printf "#!/usr/bin/env python\n" > job_scripts/exonic_coverage.py
 
 printf "import sys\n" >> job_scripts/exonic_coverage.py
-printf "from rnaseq_tools.QualityAssessmentObject import QualityAssessmentObject\n" >> job_scripts/exonic_coverage.py
+printf "from rnaseq_tools.CryptoQualityAssessmentObject import CryptoQualityAssessmentObject\n" >> job_scripts/exonic_coverage.py
 
-printf "qa = QualityAssessmentObject(interactive=True)\n" >> job_scripts/exonic_coverage.py
+printf "qa = CryptoQualityAssessmentObject(interactive=True)\n" >> job_scripts/exonic_coverage.py
 
 printf "qa.calculateExonicCoverage(sys.argv[1], sys.argv[2])" >> job_scripts/exonic_coverage.py
 
