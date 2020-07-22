@@ -9,6 +9,8 @@ ml rnaseq_pipeline
 
 read qual_assess_path < <(sed -n ${SLURM_ARRAY_TASK_ID}p /scratch/mblab/chasem/misc_scripts/qual_assess_audit_lookup.txt )
 
-query_path=/scratch/mblab/chasem/rnaseq_pipeline/query/nextflow_full_test.csv
+query_path=/scratch/mblab/chasem/rnaseq_pipeline/query/combined_df_20200720.csv
+align_count_dir_path=$(dirname ${qual_assess_path})
 
-/scratch/mblab/chasem/misc_scripts/update_qa1_audit.py ${query_path} ${qual_assess_path}
+
+/scratch/mblab/chasem/misc_scripts/update_qa1_audit.py ${query_path} ${qual_assess_path} ${align_count_dir_path}
