@@ -1,0 +1,2 @@
+/scratch/mblab/chasem/rnaseq_pipeline/align_count_results/run_2002_samples/align
+/scratch/mblab/chasem/rnaseq_pipeline/align_count_results/run_3275_samples/align

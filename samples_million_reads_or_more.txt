@@ -1,0 +1,5 @@
+../rnaseq_pipeline/lts_sequence/run_2905_samples/2905_Brent_YDR477W-04-11-14-T45A_GTAC_3_ATGACAG_S4_R1_001.fastq.gz
+../rnaseq_pipeline/lts_sequence/run_2905_samples/2905_Brent_WT1_GTAC_13_GAGGCGT_S14_R1_001.fastq.gz
+../rnaseq_pipeline/lts_sequence/run_2905_samples/2905_Brent_WT-SB2_GTAC_20_ACAGATA_S21_R1_001.fastq.gz
+../rnaseq_pipeline/lts_sequence/run_2905_samples/2905_Brent_YDR477W-04-11-14-T90A_GTAC_7_AGACTGA_S8_R1_001.fastq.gz
+../rnaseq_pipeline/lts_sequence/run_2905_samples/2905_Brent_YDR477W-06-09-15-T-1A_GTAC_2_GCTTAGA_S3_R1_001.fastq.gz

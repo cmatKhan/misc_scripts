@@ -1,0 +1,4 @@
+  File "/var/lib/slurm-llnl/slurmd/job25345783/slurm_script", line 54
+    coverage_df = coverage_df.reindex(columns=[*coverage_df.columns.to_list(), *genotype_list], fill_value=-1)
+                                               ^
+SyntaxError: invalid syntax

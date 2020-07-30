@@ -1,0 +1,9 @@
+/scratch/mblab/chasem/rnaseq_pipeline/align_count_results/run_0769_samples
+/scratch/mblab/chasem/rnaseq_pipeline/align_count_results/run_0773_samples
+/scratch/mblab/chasem/rnaseq_pipeline/align_count_results/run_0779_samples
+/scratch/mblab/chasem/rnaseq_pipeline/align_count_results/run_1573_samples
+/scratch/mblab/chasem/rnaseq_pipeline/align_count_results/run_1660_samples
+/scratch/mblab/chasem/rnaseq_pipeline/align_count_results/run_1800_samples
+/scratch/mblab/chasem/rnaseq_pipeline/align_count_results/run_1874_samples
+/scratch/mblab/chasem/rnaseq_pipeline/align_count_results/run_2002_samples
+/scratch/mblab/chasem/rnaseq_pipeline/align_count_results/run_894_samples

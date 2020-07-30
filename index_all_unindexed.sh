@@ -1,0 +1,1 @@
+for bam_file in align_count_results/*/align/*.bam; do if [ -f align_count_results/run_894_samples/align/run_894_s_3_withindex_sequence_TTTAACT_sorted_aligned_reads_with_annote.bam.bai ]; then echo index_exists; else echo align_count_results/run_894_samples/align/run_894_s_3_withindex_sequence_TTTAACT_sorted_aligned_reads_with_annote.bam; fi; done
