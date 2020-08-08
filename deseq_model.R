@@ -17,7 +17,6 @@ main = function(args){
   
   print('...reading in data')
   raw_counts_df = read_csv(raw_counts_df_path)
-  norm_counts_df = read_csv(norm_counts_df_path)
   metadata_df = read_csv(metadata_df_path)
   
   print('...construct deseq model') # TODO: GENERALIZE THIS BY MAKING DESIGN FORMULA AND THE RESIDUAL CALC BELOW PARAMETERIZED FUNCTIONS
