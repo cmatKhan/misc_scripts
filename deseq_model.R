@@ -32,6 +32,7 @@ main = function(args){
   # create a copy of log2_norm_counts to store the computed residuals
   residual_df = as_tibble(cbind(log2_norm_counts))
   
+  print('...calculating residuals')
   for (i in seq(1,nrow(residual_df))){
     for (j in seq(1,ncol(residual_df))){
       # extract sample name from column
@@ -51,6 +52,7 @@ main = function(args){
     }
   }
   
+  print(paste0('writing to output: ',output_path ))
   write_csv(residual_df, output_path)
   
 } # end main()
