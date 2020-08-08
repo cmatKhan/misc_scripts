@@ -3,8 +3,6 @@
 suppressMessages(library(optparse))
 suppressMessages(library(DESeq2))
 suppressMessages(library(tidyverse))
-suppressMessages(library(readxl))
-suppressMessages(library(factoextra))
 suppressMessages(library(BiocParallel))
 register(MulticoreParam(4))
 
