@@ -15,9 +15,12 @@ main = function(args){
   metadata_df_path = parsed_cmd_line_args$metadata
   output_path = parsed_cmd_line_args$output_full_path
   
-  print('...reading in data')
+  print('...reading in raw counts')
   raw_counts_df = read_csv(raw_counts_df_path)
+  print(head(raw_counts_df))
+  print('...reading in metdata')
   metadata_df = read_csv(metadata_df_path)
+  print(head(metadata_df))
   
   print('...construct deseq model') # TODO: GENERALIZE THIS BY MAKING DESIGN FORMULA AND THE RESIDUAL CALC BELOW PARAMETERIZED FUNCTIONS
   design_formula = '~LIBRARYPROTOCOL + GENOTYPE'
