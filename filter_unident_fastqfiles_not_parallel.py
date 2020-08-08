@@ -1,15 +1,13 @@
 #!/usr/bin/env python
 
-from multiprocessing import Process
-import glob
 import subprocess
 import pandas as pd
 import os
 import sys
 
-unident_fastq_sheet_dir_files = glob.glob(os.path.join(sys.argv[1],'*.csv'))
-path_to_lts_sequence = sys.argv[2]
 
+fastq_filelist_path = sys.argv[1]
+path_to_lts_sequence = sys.argv[2]
 
 def count_fastq_reads(fastq_filelist_path, path_to_lts_sequence):
 
@@ -20,7 +18,7 @@ def count_fastq_reads(fastq_filelist_path, path_to_lts_sequence):
         run_number = row['RUNNUMBER']
         run_directory = run_number + '_samples'
         fastq_basename = row['fastq_basename']
-        fastq_path = os.path.join(path_to_lts_sequence, run_directory, fastq_basename)
+        fastq_path = os.path.join(path_to_lts_sequence, run_directory, 'Brent_large', fastq_basename)
 
         if not os.path.isfile(fastq_path):
             print('Cannot find: %s' %fastq_path)
@@ -32,7 +30,4 @@ def count_fastq_reads(fastq_filelist_path, path_to_lts_sequence):
             with open('%s_samples_million_reads_or_more.txt'%run_number, 'a') as file:
                 file.write('%s\n'%fastq_path)
 
-for run_dir_sheet in unident_fastq_sheet_dir_files:
-    print('starting to process %s'%run_dir_sheet)
-    p = Process(target=count_fastq_reads, args=(run_dir_sheet, path_to_lts_sequence))
-    p.start()
+count_fastq_reads(fastq_filelist_path, path_to_lts_sequence)
