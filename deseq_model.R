@@ -4,7 +4,7 @@ suppressMessages(library(optparse))
 suppressMessages(library(DESeq2))
 suppressMessages(library(tidyverse))
 suppressMessages(library(BiocParallel))
-register(MulticoreParam(4))
+register(MulticoreParam(10))
 
 main = function(args){
   # main method of script
@@ -17,14 +17,11 @@ main = function(args){
   
   print('...reading in raw counts')
   raw_counts_df = read_csv(raw_counts_df_path)
-  print(head(raw_counts_df[,1:3]))
   print('...reading in metdata')
   metadata_df = read_csv(metadata_df_path)
-  print(head(metadata_df[,1:3]))
   
   print('...construct deseq model') # TODO: GENERALIZE THIS BY MAKING DESIGN FORMULA AND THE RESIDUAL CALC BELOW PARAMETERIZED FUNCTIONS
   design_formula = '~LIBRARYPROTOCOL + GENOTYPE'
-  print(design_formula)
   deseq_model = generateDeseqModel(raw_counts_df, metadata_df, formula(design_formula))
   
   print('...extracting the model coefficients')
@@ -42,7 +39,7 @@ main = function(args){
       # calculate the intercept + common variable (in this case, libraryprotocol)
       model_prediction = as.integer(coef_df[i, 'Intercept']) + as.integer(coef_df[i, 'LIBRARYPROTOCOL_SolexaPrep_vs_E7420L'])
       # extract genotype
-      genotype = lookup_table[lookup_table$FASTQFILENAME == sample,]$GENOTYPE
+      genotype = metadata_df[metadata_df$FASTQFILENAME == sample,]$GENOTYPE
       # if the genotype is not the wildtype, include the genotype effect
       wildtype = 'CNAG_00000'
       if (genotype != wildtype){
