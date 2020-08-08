@@ -17,10 +17,10 @@ main = function(args){
   
   print('...reading in raw counts')
   raw_counts_df = read_csv(raw_counts_df_path)
-  print(head(raw_counts_df))
+  print(head(raw_counts_df[,1:3]))
   print('...reading in metdata')
   metadata_df = read_csv(metadata_df_path)
-  print(head(metadata_df))
+  print(head(metadata_df[,1:3]))
   
   print('...construct deseq model') # TODO: GENERALIZE THIS BY MAKING DESIGN FORMULA AND THE RESIDUAL CALC BELOW PARAMETERIZED FUNCTIONS
   design_formula = '~LIBRARYPROTOCOL + GENOTYPE'
@@ -74,7 +74,7 @@ parseArguments <- function() {
   option_list <- list(
     make_option(c('-r', '--raw_counts'),
                 help='raw count matrix (genes x samples).'),
-    make_option(c('-m', '--parsed_metadata'), 
+    make_option(c('-m', '--metadata'), 
                 help='metadata with all samples corresponding to the columns of the count data x metadata. must include the columns in the design formula'),
     make_option(c('-o', '--output_full_path'), 
                 help='full output path eg /scratch/mblab/chasem/rnaseq_pipeline/experiments/myexperiment_residuals.csv'))
