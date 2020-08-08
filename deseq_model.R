@@ -24,7 +24,8 @@ main = function(args){
   
   print('...construct deseq model') # TODO: GENERALIZE THIS BY MAKING DESIGN FORMULA AND THE RESIDUAL CALC BELOW PARAMETERIZED FUNCTIONS
   design_formula = '~LIBRARYPROTOCOL + GENOTYPE'
-  deseq_model = generateDeseqModel(raw_counts_df, metadata_df, design_formula)
+  print(design_formula)
+  deseq_model = generateDeseqModel(raw_counts_df, metadata_df, formula(design_formula))
   
   print('...extracting the model coefficients')
   coef_df = coef(deseq_model)
