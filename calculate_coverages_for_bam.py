@@ -31,7 +31,7 @@ organism_object = OrganismData(organism = 'KN99', interactive=True)
 genotype_list = ['CKF44_00332', 'CKF44_00896', 'CKF44_01708', 'CKF44_01948', 'CKF44_03366']
 
 # create coverage_df with fastq_simple_name down rows and columns for each genotype
-coverage_df = pd.DataFrame({'fastqFilename': utils.pathBaseName(bam_file)})
+coverage_df = pd.DataFrame.from_dict({'fastqFilename': utils.pathBaseName(bam_file)})
 
 # credit: https://stackoverflow.com/a/44951376/9708266
 coverage_df = coverage_df.reindex(columns=[*coverage_df.columns.to_list(), *genotype_list], fill_value=-1)
