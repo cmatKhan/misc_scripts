@@ -17,26 +17,39 @@ sample_list = [os.path.basename(x).replace('_novoalign.log','') for x in crypto_
 
 unident_eval_df = pd.DataFrame({'sample': sample_list, 'crypto_uniq_align': None, 'yeast_uniq_align': None, 'guess': None})
 
-unique_alignment_regex = r"(?<=Unique Alignment:\s)\s*\d*"
+unique_alignment_regex = r"\d+\.\d+%"
 
 for index, row in unident_eval_df.iterrows():
     novoalign_name = row['sample']
     print('...checking %s'%novoalign_name)
 
     crypto_alignment_log_path = os.path.join(crypto_log_dirpath, novoalign_name+'_novoalign.log')
-    crypto_alignment_log_file = open(crypto_alignment_log_path, 'r')
-    crypto_alignment_log_text = crypto_alignment_log_file.read()
+    try:
+        crypto_alignment_log_file = open(crypto_alignment_log_path, 'r')
+        crypto_alignment_log_text = crypto_alignment_log_file.read()
+    except FileNotFoundError:
+        print('%s not found for crypto'%novoalign_name)
+        continue
 
     yeast_alignment_log_path = os.path.join(yeast_log_dirpath, novoalign_name+'_novoalign.log')
-    yeast_alignment_log_file = open(yeast_alignment_log_path, 'r')
-    yeast_alignment_log_text = yeast_alignment_log_file.read()
+    try:
+        yeast_alignment_log_file = open(yeast_alignment_log_path, 'r')
+        yeast_alignment_log_text = yeast_alignment_log_file.read()
+    except FileNotFoundError:
+        print('%s not found for yeast'%novoalign_name)
+        continue
 
-    crypto_unique_alignment = int(re.findall(unique_alignment_regex, crypto_alignment_log_text)[0]) / float(50000.0)
-    yeast_unique_alignment = int(re.findall(unique_alignment_regex, yeast_alignment_log_text)[0]) / float(50000.0)
+    try:
+        crypto_unique_alignment = float(re.findall(unique_alignment_regex, crypto_alignment_log_text)[0][:-1])
+        print(crypto_unique_alignment)
+        yeast_unique_alignment = float(re.findall(unique_alignment_regex, yeast_alignment_log_text)[0][:-1])
+        print(yeast_unique_alignment)
+    except IndexError:
+        continue
 
-    if crypto_unique_alignment > .6 and yeast_unique_alignment < .1:
+    if crypto_unique_alignment > 60 and yeast_unique_alignment < 10:
         guess = 'crypto'
-    elif crypto_unique_alignment < .1 and yeast_unique_alignment > .6:
+    elif crypto_unique_alignment < 10 and yeast_unique_alignment > 60:
         guess = 'yeast'
     else:
         guess = 'unknown'

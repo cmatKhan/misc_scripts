@@ -21,8 +21,9 @@ import sys
 
 # extract bam file
 bam_file = sys.argv[1]
+simple_name = utils.pathBaseName(bam_file)
 # create output path
-output_path = os.path.join(sys.argv[2], utils.pathBaseName(bam_file), '_genotype_check.csv')
+output_path = os.path.join(sys.argv[2], simple_name + '_genotype_check.csv')
 
 qa = QualityAssessmentObject(interactive=True)
 
@@ -31,22 +32,20 @@ organism_object = OrganismData(organism = 'KN99', interactive=True)
 genotype_list = ['CKF44_00332', 'CKF44_00896', 'CKF44_01708', 'CKF44_01948', 'CKF44_03366']
 
 # create coverage_df with fastq_simple_name down rows and columns for each genotype
-coverage_df = pd.DataFrame.from_dict({'fastqFilename': utils.pathBaseName(bam_file)})
-
-# credit: https://stackoverflow.com/a/44951376/9708266
-coverage_df = coverage_df.reindex(columns=[*coverage_df.columns.to_list(), *genotype_list], fill_value=-1)
-coverage_df.reset_index(inplace=True, drop=True)
+simple_name_dict = {simple_name: [-1,-1,-1,-1,-1]}
+coverage_df = pd.DataFrame.from_dict(simple_name_dict, orient='index', columns=genotype_list)
+coverage_df['fastqFilename'] = coverage_df.index
+coverage_df.reset_index(drop=True, inplace=True)
+print(coverage_df)
 
 for index, row in coverage_df.iterrows():
     fastq_simple_name = str(row['fastqFilename'])
     print('...working on %s' %(fastq_simple_name))
-    bam_file = [bam_file for bam_file in bam_file_path_list if fastq_simple_name in bam_file][0]
     for list_index in range(len(genotype_list)):
         genotype = genotype_list[list_index]
         print('\t...working on %s which is %s/%s' %(genotype, list_index, len(genotype_list)))
         coverage_df.loc[index, genotype] = qa.calculatePercentFeatureCoverage('CDS', genotype, organism_object.annotation_file, bam_file)
 
-output_path = os.path.join(sys.argv[2], utils.pathBaseName(bam_file), '_genotype_check.csv')
 if os.path.isfile(output_path):
     print('OH NO! BAM FILENAME NOT UNIQUE')
 
