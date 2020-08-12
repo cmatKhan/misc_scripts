@@ -22,7 +22,7 @@ main = function(args){
   # create output directory
   output_path = paste(output_dir,output_name, sep='/')
   print(paste0('output directory created at: ', output_path))
-  dir.create(output_path)
+  suppressMessages(dir.create(output_path))
   
   print('...reading in raw counts')
   raw_counts_df = read_csv(raw_counts_df_path)
@@ -174,8 +174,6 @@ createPlots = function(prcomp_object, residual_pc_df, design_formula, output_pat
   # note: design_formula passed as a formula object
   
   graph_title = paste0(as.character(design_formula)[2], '_', output_name)
-  
-  residual_pc_df$LIBRARY_DATE = as.factor(residual_pc_df$LIBRARYDATE)
   
   g_librarydate = ggplot(residual_pc_df, aes(PC1,PC2))+geom_point(aes(color=LIBRARYDATE))+ggtitle(graph_title)
   g_libraryprotocol = ggplot(residual_pc_df, aes(PC1,PC2))+geom_point(aes(color=LIBRARYPROTOCOL))+ggtitle(graph_title)
