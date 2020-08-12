@@ -75,8 +75,8 @@ main = function(args){
   r_squared_df = tibble(name=output_name, r_2=r_squared)
   writeOutDataframe(output_path, 'r_squared', r_squared_df)
 
-  # calculate principal components
-  residuals_prcomp_object = prcomp(log2_norm_counts)
+  # calculate principal components on residuals after log2 transformation
+  residuals_prcomp_object = prcomp(log2(residual_norm_space_df))
   residuals_pc_df = as_tibble(residuals_prcomp_object$rotation)
   residuals_pc_df$FASTQFILENAME = rownames(residuals_prcomp_object$rotation)
   residuals_pc_df = dplyr::inner_join(residuals_pc_df, metadata_df, on=FASTQFILENAME)
@@ -113,9 +113,11 @@ generateDeseqModel = function(raw_count_df, metadata_df, design_formula){
 
 calculateModelPredictions = function(model_matrix, coefficient_matrix, gene_list, sample_list){
   
-  # calculate model predictions
+  # model matrix is m=sample  n=model predictors, coefficient matrix is m=gene n=predictors
   y_hat = model_matrix %*% t(coefficient_matrix)
+  # return to m=gene n=sample
   y_hat = t(y_hat)
+  # name rows and columns
   rownames(y_hat) = gene_list
   colnames(y_hat) = sample_list
   
@@ -143,10 +145,11 @@ calculateResidualSumOfSquares = function(residuals_df){
   
 } # end calculateResidualSumOfSquares()
 
-unNormalize = function(log_norm_residuals_df, size_factors){
+unNormalize = function(norm_residuals_df, size_factors){
 
   # un-normalize the residuals
-  unnormalized_unlogged_residuals = unlogged_residuals
+  unnormalized_unlogged_residuals = as_tibble(norm_residuals_df)
+  # multiply normalized counts by size factor
   for (j in seq(1,length(size_factors))){
     unnormalized_unlogged_residuals[,j] = unnormalized_unlogged_residuals[,j] * size_factors[j]
   }
