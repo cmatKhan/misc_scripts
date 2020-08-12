@@ -22,7 +22,7 @@ main = function(args){
   # create output directory
   output_path = paste(output_dir,output_name, sep='/')
   print(paste0('output directory created at: ', output_path))
-  suppressMessages(dir.create(output_path))
+  dir.create(output_path)
   
   print('...reading in raw counts')
   raw_counts_df = read_csv(raw_counts_df_path)
@@ -84,6 +84,7 @@ main = function(args){
   
   # plot
   createPlots(residuals_prcomp_object, residuals_pc_df, design_formula, output_path, output_name)
+  print(paste0('Done with ', as.character(design_formula)[2]))
   
 } # end main()
 
