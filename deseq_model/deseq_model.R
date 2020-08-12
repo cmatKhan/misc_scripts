@@ -58,7 +58,7 @@ main = function(args){
   writeOutDataframe(output_path, 'log2_norm_counts', as_tibble(log2_norm_counts)) # added 20200812
   
   # calculate residuals
-  residual_norm_space_df = norm_counts_plus_psuedo - model_predictions**2
+  residual_norm_space_df = norm_counts_plus_pseudo - model_predictions**2
   residual_norm_space_df = as_tibble(residual_norm_space_df)
   residual_norm_space_df[is.na(residual_norm_space_df)] = 0 # set NA to 0
   writeOutDataframe(output_path, 'logged_normalized_residuals', residual_norm_space_df)
