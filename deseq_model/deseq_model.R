@@ -53,29 +53,30 @@ main = function(args){
   writeOutDataframe(output_path, 'model_predictions.csv', as_tibble(model_predictions))  # added 20200812
   
   print('...adding a pseudocount +1 and taking log2 of normalized counts')
-    log2_norm_counts = log2(counts(deseq_model, normalized=TRUE) + 1)
+  norm_counts_plus_pseudo = counts(deseq_model, normalized=TRUE) + 1
+  log2_norm_counts = log2(norm_counts_plus_pseudo)
   writeOutDataframe(output_path, 'log2_norm_counts', as_tibble(log2_norm_counts)) # added 20200812
   
   # calculate residuals
-  residual_df = log2_norm_counts - model_predictions
-  residual_df = as_tibble(residual_df)
-  residual_df[is.na(residual_df)] = 0 # set NA to 0
-  writeOutDataframe(output_path, 'logged_normalized_residuals', residual_df)
+  residual_norm_space_df = norm_counts_plus_psuedo - model_predictions**2
+  residual_norm_space_df = as_tibble(residual_norm_space_df)
+  residual_norm_space_df[is.na(residual_norm_space_df)] = 0 # set NA to 0
+  writeOutDataframe(output_path, 'logged_normalized_residuals', residual_norm_space_df)
   
   # return residuals to raw count scale
-  unlogged_unnormalized_residual_df = round(as_tibble(unLogUnnormalize(residual_df, sizeFactors(deseq_model)))) # NOTE: DESEQ only accepts ints. maybe able to submit directly to nbinomwald
+  unlogged_unnormalized_residual_df = round(as_tibble(unNormalize(residual_norm_space_df, sizeFactors(deseq_model)))) # NOTE: DESEQ only accepts ints. maybe able to submit directly to nbinomwald
   writeOutDataframe(output_path, 'raw_residuals', unlogged_unnormalized_residual_df)
   
   # calculate r_squared
   print('...calculating correlation coefficient')
-  tss = calculateTotalSumOfSquares(log2_norm_counts)
-  rss = calculateResidualSumOfSquares(residual_df)
+  tss = calculateTotalSumOfSquares(norm_counts_plus_pseudo)
+  rss = calculateResidualSumOfSquares(residual_norm_space_df)
   r_squared = 1 - (rss/tss)
   r_squared_df = tibble(name=output_name, r_2=r_squared)
   writeOutDataframe(output_path, 'r_squared', r_squared_df)
 
   # calculate principal components
-  residuals_prcomp_object = prcomp(residual_df)
+  residuals_prcomp_object = prcomp(log2_norm_counts)
   residuals_pc_df = as_tibble(residuals_prcomp_object$rotation)
   residuals_pc_df$FASTQFILENAME = rownames(residuals_prcomp_object$rotation)
   residuals_pc_df = dplyr::inner_join(residuals_pc_df, metadata_df, on=FASTQFILENAME)
@@ -142,7 +143,7 @@ calculateResidualSumOfSquares = function(residuals_df){
   
 } # end calculateResidualSumOfSquares()
 
-unLogUnnormalize = function(log_norm_residuals_df, size_factors){
+unNormalize = function(log_norm_residuals_df, size_factors){
   
   # un-log2 the residuals
   unlogged_residuals = apply(log_norm_residuals_df, 2, function(x) 2**x)
@@ -161,7 +162,7 @@ writeOutDataframe = function(output_path, chart_name, df){
   
   # output path
   csv_output_path = paste(output_path, paste0(chart_name, '.csv'), sep='/')
-  # tell user whats what
+  # tell user whats what  
   print(paste0('writing sheet: ', csv_output_path))
   # write
   write_csv(df, csv_output_path)
