@@ -54,7 +54,7 @@ main = function(args){
   
   print('...adding a pseudocount +1 and taking log2 of normalized counts')
     log2_norm_counts = log2(counts(deseq_model, normalized=TRUE) + 1)
-  writeOutDataframe(output_path, 'log2_norm_counts', log2_norm_counts) # added 20200812
+  writeOutDataframe(output_path, 'log2_norm_counts', as_tibble(log2_norm_counts)) # added 20200812
   
   # calculate residuals
   residual_df = log2_norm_counts - model_predictions
@@ -162,7 +162,7 @@ writeOutDataframe = function(output_path, chart_name, df){
   # output path
   csv_output_path = paste(output_path, paste0(chart_name, '.csv'), sep='/')
   # tell user whats what
-  print(paste0('writing log2residuals: ', csv_output_path))
+  print(paste0('writing sheet: ', csv_output_path))
   # write
   write_csv(df, csv_output_path)
   
