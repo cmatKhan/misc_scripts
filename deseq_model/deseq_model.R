@@ -3,7 +3,7 @@
 suppressMessages(library(optparse))
 suppressMessages(library(DESeq2))
 suppressMessages(library(tidyverse))
-suppressMessages(library(factoextra))
+#suppressMessages(library(factoextra))
 suppressMessages(library(BiocParallel))
 register(MulticoreParam(10))
 
@@ -179,10 +179,10 @@ createPlots = function(prcomp_object, residual_pc_df, design_formula, output_pat
   library_date_output = paste(output_path, 'pca_by_genotype.pdf', sep='/')
   ggsave(filename = library_date_output, plot = g_genotype, device='pdf', height=8, width=12)
   
-  scree_plot_output = paste(output_path, 'scree_plot.pdf', sep='/')
-  pdf(scree_plot_output)
-  plot(fviz_eig(prcomp_object), main = graph_title)
-  dev.off()
+  # scree_plot_output = paste(output_path, 'scree_plot.pdf', sep='/')
+  # pdf(scree_plot_output)
+  # plot(fviz_eig(prcomp_object), main = graph_title)
+  # dev.off() # this library unavailable on cluster in rnaseq_pipeline env (collision w/ some other package)
   
 } # end createPlots()
 
