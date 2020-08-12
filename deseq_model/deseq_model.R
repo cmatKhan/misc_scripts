@@ -3,6 +3,7 @@
 suppressMessages(library(optparse))
 suppressMessages(library(DESeq2))
 suppressMessages(library(tidyverse))
+suppressMessages(library(factoextra))
 suppressMessages(library(BiocParallel))
 register(MulticoreParam(10))
 
@@ -13,49 +14,84 @@ main = function(args){
   parsed_cmd_line_args = args
   raw_counts_df_path = parsed_cmd_line_args$raw_counts
   metadata_df_path = parsed_cmd_line_args$metadata
-  output_path = parsed_cmd_line_args$output_full_path
+  output_dir = parsed_cmd_line_args$output_directory
+  output_name = parsed_cmd_line_args$name
+  # error if no tilde in first position TODO!!
+  design_formula = formula(parsed_cmd_line_args$design_formula)
+  
+  # create output directory
+  output_path = paste(output_dir,output_name, sep='/')
+  print(paste0('output directory created at: ', output_path))
+  dir.create(output_path)
   
   print('...reading in raw counts')
   raw_counts_df = read_csv(raw_counts_df_path)
+  
   print('...reading in metdata')
   metadata_df = read_csv(metadata_df_path)
+  metadata_df$LIBRARYDATE = as.Date(metadata_df$LIBRARYDATE, format="%m.%d.%y")
+
+  print('...factoring design formula columns')
+  metadata_df = factorFormulaColumnsInMetadata(design_formula, metadata_df)
   
-  print('...construct deseq model') # TODO: GENERALIZE THIS BY MAKING DESIGN FORMULA AND THE RESIDUAL CALC BELOW PARAMETERIZED FUNCTIONS
-  design_formula = '~LIBRARYPROTOCOL + GENOTYPE'
-  deseq_model = generateDeseqModel(raw_counts_df, metadata_df, formula(design_formula))
+  print('...constructing design matrix from formula')
+  model_matrix = model.matrix(design_formula, metadata_df)
+  writeOutDataframe(output_path, 'model_matrix', as_tibble(model_matrix))
   
-  print('...extracting the model coefficients')
-  coef_df = coef(deseq_model)
+  print('...construct deseq model')
+  deseq_model = generateDeseqModel(raw_counts_df, metadata_df, design_formula)
+  
+  print('...extracting coefficient matrix')
+  coefficient_df = coef(deseq_model)
+  rownames(coefficient_df) = rownames(raw_counts_df)
+  coefficient_df = as_tibble(coefficient_df)
+  writeOutDataframe(output_path, 'coefficients', coefficient_df)
+  
+  print('...calculating model predictions')
+  model_predictions = calculateModelPredictions(model_matrix, coefficient_df, rownames(raw_counts_df), metadata_df$FASTQFILENAME)
   
   print('...adding a pseudocount +1 and taking log2 of normalized counts')
   log2_norm_counts = log2(counts(deseq_model, normalized=TRUE) + 1)
-  # create a copy of log2_norm_counts to store the computed residuals
-  residual_df = as_tibble(cbind(log2_norm_counts))
   
-  print('...calculating residuals')
-  for (i in seq(1,nrow(residual_df))){
-    for (j in seq(1,ncol(residual_df))){
-      # extract sample name from column
-      sample = colnames(residual_df)[j]
-      # calculate the intercept + common variable (in this case, libraryprotocol)
-      model_prediction = as.integer(coef_df[i, 'Intercept']) + as.integer(coef_df[i, 'LIBRARYPROTOCOL_SolexaPrep_vs_E7420L'])
-      # extract genotype
-      genotype = metadata_df[metadata_df$FASTQFILENAME == sample,]$GENOTYPE
-      # if the genotype is not the wildtype, include the genotype effect
-      wildtype = 'CNAG_00000'
-      if (genotype != wildtype){
-        coef_column_name = paste0('GENOTYPE', '_', genotype, '_vs_', 'CNAG_00000')
-        model_prediction = model_prediction + as.integer(coef_df[i, coef_column_name])
-      }
-      
-      residual_df[i,j] = abs(log2_norm_counts[i,j] - model_prediction)
-    }
-  }
+  # calculate residuals
+  residual_df = log2_norm_counts - model_predictions
+  residual_df = as_tibble(residual_df)
+  residual_df[is.na(residual_df)] = 0 # set NA to 0
+  writeOutDataframe(output_path, 'logged_normalized_residuals', residual_df)
   
-  print(paste0('writing to output: ',output_path ))
-  write_csv(residual_df, output_path)
+  # return residuals to raw count scale
+  unlogged_unnormalized_residual_df = as_tibble(unLogUnnormalize(residual_df, sizeFactors(deseq_model)))
+  writeOutDataframe(output_path, 'raw_residuals', unlogged_unnormalized_residual_df)
+  
+  # calculate r_squared
+  print('...calculating correlation coefficient')
+  tss = calculateTotalSumOfSquares(log2_norm_counts)
+  rss = calculateResidualSumOfSquares(residual_df)
+  r_squared = 1 - (rss/tss)
+  r_squared_df = tibble(name=output_name, r_2=r_squared)
+  writeOutDataframe(output_path, 'r_squared', r_squared_df)
+
+  # calculate principal components
+  residuals_prcomp_object = prcomp(residual_df)
+  residuals_pc_df = as_tibble(residuals_prcomp_object$rotation)
+  residuals_pc_df$FASTQFILENAME = rownames(residuals_prcomp_object$rotation)
+  residuals_pc_df = dplyr::inner_join(residuals_pc_df, metadata_df, on=FASTQFILENAME)
+  writeOutDataframe(output_path, 'log_normalized_residual_pc', residuals_pc_df)
+  
+  # plot
+  createPlots(residuals_prcomp_object, residuals_pc_df, design_formula, output_path, output_name)
   
 } # end main()
+
+factorFormulaColumnsInMetadata = function(design_formula, df){
+  
+  # extract columns from the design formula as a list
+  formula_str = as.character(design_formula)
+  column_list = str_split(formula_str, '\\+')
+  column_list = lapply(column_list, trimws)[-1]
+  df[unlist(column_list)] = lapply(df[unlist(column_list)], factor)
+  return(df)
+}
 
 generateDeseqModel = function(raw_count_df, metadata_df, design_formula){
   
@@ -66,18 +102,104 @@ generateDeseqModel = function(raw_count_df, metadata_df, design_formula){
   deseq_model = DESeq(dds, parallel=TRUE)
   
   return(deseq_model)
-}
+  
+} # end generateDeseqModel()
+
+calculateModelPredictions = function(model_matrix, coefficient_matrix, gene_list, sample_list){
+  
+  # calcu
+  y_hat = model_matrix %*% t(coefficient_matrix)
+  y_hat = t(y_hat)
+  rownames(y_hat) = gene_list
+  colnames(y_hat) = sample_list
+  
+  return(y_hat)
+  
+} # end calculateModelPredictions()
+
+calculateTotalSumOfSquares = function(log2_norm_count_df){
+  variance_df = log2_norm_count_df - rowMeans(log2_norm_count_df)
+  
+  squared_variance_df = variance_df**2
+  squared_variance_df[is.na(squared_variance_df)] = 0
+  
+  return(sum(colSums(squared_variance_df)))
+  
+} # end calculateTotalSumOfSquares()
+
+calculateResidualSumOfSquares = function(residuals_df){
+  
+  squared_residuals = residuals_df**2
+  squared_residuals[is.na(squared_residuals)] = 0
+  
+  return(sum(colSums(squared_residuals)))
+  
+} # end calculateResidualSumOfSquares()
+
+unLogUnnormalize = function(log_norm_residuals_df, size_factors){
+  
+  # un-log2 the residuals
+  unlogged_residuals = apply(log_norm_residuals_df, 2, function(x) 2**x)
+  
+  # un-normalize the residuals
+  unnormalized_unlogged_residuals = unlogged_residuals
+  for (i in seq(1,length(size_factors))){
+    unnormalized_unlogged_residuals[,i] = unnormalized_unlogged_residuals[,i] * size_factors[i]
+  }
+  
+  return(unnormalized_unlogged_residuals)
+  
+} # end unLogUnnormalize()
+
+writeOutDataframe = function(output_path, chart_name, df){
+  
+  # output path
+  csv_output_path = paste(output_path, paste0(chart_name, '.csv'), sep='/')
+  # tell user whats what
+  print(paste0('writing log2residuals: ', csv_output_path))
+  # write
+  write_csv(df, csv_output_path)
+  
+} # end writeOutDataframe()
+
+createPlots = function(prcomp_object, residual_pc_df, design_formula, output_path, output_name){
+  # TODO: GENERALIZE TO CREATE LIST OF PLOTS -- PASS LIST OF COLUMN VARIABLES IN TO PLOT
+  # note: design_formula passed as a formula object
+  
+  graph_title = paste0(as.character(design_formula)[2], '_', output_name)
+  
+  g_librarydate = ggplot(residual_pc_df, aes(PC1,PC2))+geom_point(aes(color=LIBRARYDATE))+ggtitle(graph_title)
+  g_libraryprotocol = ggplot(residual_pc_df, aes(PC1,PC2))+geom_point(aes(color=LIBRARYPROTOCOL))+ggtitle(graph_title)
+  g_genotype = ggplot(residual_pc_df, aes(PC1,PC2))+geom_point(aes(color=GENOTYPE))+ggtitle(graph_title)
+  
+  library_date_output = paste(output_path, 'pca_by_library_date.pdf', sep='/')
+  ggsave(filename = library_date_output, plot = g_librarydate, device='pdf', height=8, width=12)
+  library_date_output = paste(output_path, 'pca_by_library_protocol.pdf', sep='/')
+  ggsave(filename = library_date_output, plot = g_libraryprotocol, device='pdf', height=8, width=12)
+  library_date_output = paste(output_path, 'pca_by_genotype.pdf', sep='/')
+  ggsave(filename = library_date_output, plot = g_genotype, device='pdf', height=8, width=12)
+  
+  scree_plot_output = paste(output_path, 'scree_plot.pdf', sep='/')
+  pdf(scree_plot_output)
+  plot(fviz_eig(prcomp_object), main = graph_title)
+  dev.off()
+  
+} # end createPlots()
 
 parseArguments <- function() {
   # parse and return cmd line input
   
   option_list <- list(
     make_option(c('-r', '--raw_counts'),
-                help='raw count matrix (genes x samples).'),
+                help='raw count matrix (genes x samples)'),
     make_option(c('-m', '--metadata'), 
                 help='metadata with all samples corresponding to the columns of the count data x metadata. must include the columns in the design formula'),
-    make_option(c('-o', '--output_full_path'), 
-                help='full output path eg /scratch/mblab/chasem/rnaseq_pipeline/experiments/myexperiment_residuals.csv'))
+    make_option(c('-d', '--design_formula'), 
+                help='eg ~LIBRARYDATE+GENOTYPE currently does not accept variables with continuous data. base level will be the first level in the factored column(s). Currently not set up for interaction terms'),
+    make_option(c('-o', '--output_directory'), 
+                help='path to directory to output results'),
+    make_option(c('-n', '--name'),
+                help='name of results subdirectory outputed in the path above eg if comparing library date libraryDate_model might be the name'))
   
   args <- parse_args(OptionParser(option_list=option_list))
   return(args)
