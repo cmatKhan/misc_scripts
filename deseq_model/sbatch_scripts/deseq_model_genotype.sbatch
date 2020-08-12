@@ -13,4 +13,4 @@ metadata=/scratch/mblab/chasem/misc_scripts/deseq_model/data/filtered_metadata_2
 output_dir=/scratch/mblab/chasem/misc_scripts/deseq_model/results
 
 
-/scratch/mblab/chasem/misc_scripts/deseq_model/deseq_model.R -r ${raw_counts} -m ${metadata} -d ~GENOTYPE -o ${output_dir} -n genotype
+/scratch/mblab/chasem/misc_scripts/deseq_model/deseq_model.R -r ${raw_counts} -m ${metadata} -d ~GENOTYPE -o ${output_dir} -n genotype_model
