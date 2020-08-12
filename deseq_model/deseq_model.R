@@ -168,6 +168,8 @@ createPlots = function(prcomp_object, residual_pc_df, design_formula, output_pat
   
   graph_title = paste0(as.character(design_formula)[2], '_', output_name)
   
+  residual_pc_df$LIBRARY_DATE = as.factor(residual_pc_df$LIBRARYDATE)
+  
   g_librarydate = ggplot(residual_pc_df, aes(PC1,PC2))+geom_point(aes(color=LIBRARYDATE))+ggtitle(graph_title)
   g_libraryprotocol = ggplot(residual_pc_df, aes(PC1,PC2))+geom_point(aes(color=LIBRARYPROTOCOL))+ggtitle(graph_title)
   g_genotype = ggplot(residual_pc_df, aes(PC1,PC2))+geom_point(aes(color=GENOTYPE))+ggtitle(graph_title)+theme(legend.position = "none")
