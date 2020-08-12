@@ -76,7 +76,7 @@ main = function(args){
   writeOutDataframe(output_path, 'r_squared', r_squared_df)
 
   # calculate principal components on residuals after log2 transformation (add psueocount)
-  residuals_prcomp_object = prcomp(log2(residual_norm_space_df + 1))
+  residuals_prcomp_object = prcomp(residual_norm_space_df)
   residuals_pc_df = as_tibble(residuals_prcomp_object$rotation)
   residuals_pc_df$FASTQFILENAME = rownames(residuals_prcomp_object$rotation)
   residuals_pc_df = dplyr::inner_join(residuals_pc_df, metadata_df, on=FASTQFILENAME)
