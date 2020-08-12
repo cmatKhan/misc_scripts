@@ -50,7 +50,7 @@ main = function(args){
   
   print('...calculating model predictions')
   model_predictions = calculateModelPredictions(model_matrix, coefficient_df, rownames(raw_counts_df), metadata_df$FASTQFILENAME)
-  writeOutDataframe(output_path, 'model_predictions.csv', model_predictions)  # added 20200812
+  writeOutDataframe(output_path, 'model_predictions.csv', as_tibble(model_predictions))  # added 20200812
   
   print('...adding a pseudocount +1 and taking log2 of normalized counts')
     log2_norm_counts = log2(counts(deseq_model, normalized=TRUE) + 1)
