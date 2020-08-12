@@ -40,6 +40,7 @@ main = function(args){
   
   print('...construct deseq model')
   deseq_model = generateDeseqModel(raw_counts_df, metadata_df, design_formula)
+  writeOutDataframe(output_path, 'size_factors', as_tibble(sizeFactors(deseq_model))) # added 20200812
   
   print('...extracting coefficient matrix')
   coefficient_df = coef(deseq_model)
@@ -49,9 +50,11 @@ main = function(args){
   
   print('...calculating model predictions')
   model_predictions = calculateModelPredictions(model_matrix, coefficient_df, rownames(raw_counts_df), metadata_df$FASTQFILENAME)
+  writeOutDataframe(output_path, 'model_predictions.csv', model_predictions)  # added 20200812
   
   print('...adding a pseudocount +1 and taking log2 of normalized counts')
-  log2_norm_counts = log2(counts(deseq_model, normalized=TRUE) + 1)
+    log2_norm_counts = log2(counts(deseq_model, normalized=TRUE) + 1)
+  writeOutDataframe(output_path, 'log2_norm_counts', log2_norm_counts) # added 20200812
   
   # calculate residuals
   residual_df = log2_norm_counts - model_predictions
@@ -90,7 +93,9 @@ factorFormulaColumnsInMetadata = function(design_formula, df){
   column_list = str_split(formula_str, '\\+')
   column_list = lapply(column_list, trimws)[-1]
   df[unlist(column_list)] = lapply(df[unlist(column_list)], factor)
+  
   return(df)
+
 }
 
 generateDeseqModel = function(raw_count_df, metadata_df, design_formula){
@@ -107,7 +112,7 @@ generateDeseqModel = function(raw_count_df, metadata_df, design_formula){
 
 calculateModelPredictions = function(model_matrix, coefficient_matrix, gene_list, sample_list){
   
-  # calcu
+  # calculate model predictions
   y_hat = model_matrix %*% t(coefficient_matrix)
   y_hat = t(y_hat)
   rownames(y_hat) = gene_list
@@ -118,12 +123,13 @@ calculateModelPredictions = function(model_matrix, coefficient_matrix, gene_list
 } # end calculateModelPredictions()
 
 calculateTotalSumOfSquares = function(log2_norm_count_df){
-  variance_df = log2_norm_count_df - rowMeans(log2_norm_count_df)
   
-  squared_variance_df = variance_df**2
-  squared_variance_df[is.na(squared_variance_df)] = 0
+  deviation_df = log2_norm_count_df - rowMeans(log2_norm_count_df) # need to check operation here 20200812. problem in r2 calc
   
-  return(sum(colSums(squared_variance_df)))
+  squared_deviation_df = deviation_df**2
+  squared_deviation_df[is.na(squared_deviation_df)] = 0
+  
+  return(sum(colSums(squared_deviation_df)))
   
 } # end calculateTotalSumOfSquares()
 
@@ -143,10 +149,10 @@ unLogUnnormalize = function(log_norm_residuals_df, size_factors){
   
   # un-normalize the residuals
   unnormalized_unlogged_residuals = unlogged_residuals
-  for (i in seq(1,length(size_factors))){
-    unnormalized_unlogged_residuals[,i] = unnormalized_unlogged_residuals[,i] * size_factors[i]
+  for (j in seq(1,length(size_factors))){
+    unnormalized_unlogged_residuals[,j] = unnormalized_unlogged_residuals[,j] * size_factors[j]
   }
-  
+
   return(unnormalized_unlogged_residuals)
   
 } # end unLogUnnormalize()
