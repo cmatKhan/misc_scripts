@@ -60,7 +60,7 @@ main = function(args){
   writeOutDataframe(output_path, 'logged_normalized_residuals', residual_df)
   
   # return residuals to raw count scale
-  unlogged_unnormalized_residual_df = as_tibble(unLogUnnormalize(residual_df, sizeFactors(deseq_model)))
+  unlogged_unnormalized_residual_df = round(as_tibble(unLogUnnormalize(residual_df, sizeFactors(deseq_model)))) # NOTE: DESEQ only accepts ints. maybe able to submit directly to nbinomwald
   writeOutDataframe(output_path, 'raw_residuals', unlogged_unnormalized_residual_df)
   
   # calculate r_squared
@@ -170,7 +170,7 @@ createPlots = function(prcomp_object, residual_pc_df, design_formula, output_pat
   
   g_librarydate = ggplot(residual_pc_df, aes(PC1,PC2))+geom_point(aes(color=LIBRARYDATE))+ggtitle(graph_title)
   g_libraryprotocol = ggplot(residual_pc_df, aes(PC1,PC2))+geom_point(aes(color=LIBRARYPROTOCOL))+ggtitle(graph_title)
-  g_genotype = ggplot(residual_pc_df, aes(PC1,PC2))+geom_point(aes(color=GENOTYPE))+ggtitle(graph_title)
+  g_genotype = ggplot(residual_pc_df, aes(PC1,PC2))+geom_point(aes(color=GENOTYPE))+ggtitle(graph_title)+theme(legend.position = "none")
   
   library_date_output = paste(output_path, 'pca_by_library_date.pdf', sep='/')
   ggsave(filename = library_date_output, plot = g_librarydate, device='pdf', height=8, width=12)
