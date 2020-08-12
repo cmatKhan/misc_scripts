@@ -50,7 +50,7 @@ main = function(args){
   
   print('...calculating model predictions')
   model_predictions = calculateModelPredictions(model_matrix, coefficient_df, rownames(raw_counts_df), metadata_df$FASTQFILENAME)
-  writeOutDataframe(output_path, 'model_predictions.csv', as_tibble(model_predictions))  # added 20200812
+  writeOutDataframe(output_path, 'model_predictions', as_tibble(model_predictions))  # added 20200812
   
   print('...adding a pseudocount +1 and taking log2 of normalized counts')
   norm_counts_plus_pseudo = counts(deseq_model, normalized=TRUE) + 1
@@ -58,10 +58,10 @@ main = function(args){
   writeOutDataframe(output_path, 'log2_norm_counts', as_tibble(log2_norm_counts)) # added 20200812
   
   # calculate residuals
-  residual_norm_space_df = norm_counts_plus_pseudo - model_predictions**2
+  residual_norm_space_df = norm_counts_plus_pseudo - apply(model_predictions, 2, function(x) 2**x) # unlog the model predictions
   residual_norm_space_df = as_tibble(residual_norm_space_df)
   residual_norm_space_df[is.na(residual_norm_space_df)] = 0 # set NA to 0
-  writeOutDataframe(output_path, 'logged_normalized_residuals', residual_norm_space_df)
+  writeOutDataframe(output_path, 'normalized_residuals', residual_norm_space_df)
   
   # return residuals to raw count scale
   unlogged_unnormalized_residual_df = round(as_tibble(unNormalize(residual_norm_space_df, sizeFactors(deseq_model)))) # NOTE: DESEQ only accepts ints. maybe able to submit directly to nbinomwald
@@ -144,10 +144,7 @@ calculateResidualSumOfSquares = function(residuals_df){
 } # end calculateResidualSumOfSquares()
 
 unNormalize = function(log_norm_residuals_df, size_factors){
-  
-  # un-log2 the residuals
-  unlogged_residuals = apply(log_norm_residuals_df, 2, function(x) 2**x)
-  
+
   # un-normalize the residuals
   unnormalized_unlogged_residuals = unlogged_residuals
   for (j in seq(1,length(size_factors))){
@@ -156,7 +153,7 @@ unNormalize = function(log_norm_residuals_df, size_factors){
 
   return(unnormalized_unlogged_residuals)
   
-} # end unLogUnnormalize()
+} # end unNormalize()
 
 writeOutDataframe = function(output_path, chart_name, df){
   
