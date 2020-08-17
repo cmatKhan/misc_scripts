@@ -35,11 +35,11 @@ main = function(args){
   metadata_df = factorFormulaColumnsInMetadata(design_formula, metadata_df)
   
   print('...constructing design matrix from formula')
-  model_matrix = model.matrix(design_formula, metadata_df)
+  model_matrix = createModelMatrix(design_formula, metadata_df)
   writeOutDataframe(output_path, 'model_matrix', as_tibble(model_matrix))
   
   print('...construct deseq model')
-  deseq_model = generateDeseqModel(raw_counts_df, metadata_df, design_formula)
+  deseq_model = generateDeseqModel(raw_counts_df, metadata_df, model_matrix)
   writeOutDataframe(output_path, 'size_factors', as_tibble(sizeFactors(deseq_model))) # added 20200812
   
   print('...extracting coefficient matrix')
@@ -58,14 +58,19 @@ main = function(args){
   writeOutDataframe(output_path, 'log2_norm_counts', as_tibble(log2_norm_counts)) # added 20200812
   
   # calculate residuals
+  residual_log_norm_space_df = log2_norm_counts - model_predictions
+  residual_log_norm_space_df = as_tibble(residual_log_norm_space_df)
+  residual_log_norm_space_df[is.na(residual_log_norm_space_df)] = 0 # set NA to 0
+  writeOutDataframe(output_path, 'log2_norm_space_residuals', residual_log_norm_space_df)
+  
   residual_norm_space_df = norm_counts_plus_pseudo - apply(model_predictions, 2, function(x) 2**x) # unlog the model predictions
   residual_norm_space_df = as_tibble(residual_norm_space_df)
   residual_norm_space_df[is.na(residual_norm_space_df)] = 0 # set NA to 0
-  writeOutDataframe(output_path, 'normalized_residuals', residual_norm_space_df)
+  writeOutDataframe(output_path, 'normalized_space_residuals', residual_norm_space_df)
   
   # return residuals to raw count scale
   unlogged_unnormalized_residual_df = round(as_tibble(unNormalize(residual_norm_space_df, sizeFactors(deseq_model)))) # NOTE: DESEQ only accepts ints. maybe able to submit directly to nbinomwald
-  writeOutDataframe(output_path, 'raw_residuals', unlogged_unnormalized_residual_df)
+  writeOutDataframe(output_path, 'raw_space_residuals', unlogged_unnormalized_residual_df)
   
   # calculate r_squared
   print('...calculating correlation coefficient')
@@ -75,35 +80,86 @@ main = function(args){
   r_squared_df = tibble(name=output_name, r_2=r_squared)
   writeOutDataframe(output_path, 'r_squared', r_squared_df)
 
-  # calculate principal components on residuals after log2 transformation (add psueocount)
-  residuals_prcomp_object = prcomp(residual_norm_space_df)
-  residuals_pc_df = as_tibble(residuals_prcomp_object$rotation)
-  residuals_pc_df$FASTQFILENAME = rownames(residuals_prcomp_object$rotation)
-  residuals_pc_df = dplyr::inner_join(residuals_pc_df, metadata_df, on=FASTQFILENAME)
-  writeOutDataframe(output_path, 'log_normalized_residual_pc', residuals_pc_df)
+  # calculate principal components on residuals
+  normalized_space_residual_pc = calculatePrincipalComponents(residual_norm_space_df, metadata_df)
+  writeOutDataframe(output_path, 'normalized_space_residual_pc', normalized_space_residual_pc)
+  
+  log2_norm_space_residual_pc = calculatePrincipalComponents(residual_log_norm_space_df, metadata_df)
+  writeOutDataframe(output_path, 'log2_normalized_space_residual_pc', log2_norm_space_residual_pc)
   
   # plot
-  createPlots(residuals_prcomp_object, residuals_pc_df, design_formula, output_path, output_name)
+  createPcaPlots(log2_norm_space_residual_pc, design_formula, output_path, output_name)
   print(paste0('Done with ', as.character(design_formula)[2]))
   
 } # end main()
 
-factorFormulaColumnsInMetadata = function(design_formula, df){
+convertDesignFormulaToColumnList = function(design_formula){
   
   # extract columns from the design formula as a list
   formula_str = as.character(design_formula)
   column_list = str_split(formula_str, '\\+')
   column_list = lapply(column_list, trimws)[-1]
+  
+  return(column_list)
+
+} # end convertDesignFormulaToColumnList()
+
+factorFormulaColumnsInMetadata = function(design_formula, df){
+  
+  # extract columns from the design formula as a list
+  column_list = convertDesignFormulaToColumnList(design_formula)
   df[unlist(column_list)] = lapply(df[unlist(column_list)], factor)
+  
+  if ('LIBRARYPROTOCOL' %in% unlist(column_list)){
+    df$LIBRARYPROTOCOL = relevel(df$LIBRARYPROTOCOL, ref='E7420L')
+  }
+  if ('LIBRARYDATE' %in% unlist(column_list)){
+    df$LIBRARYDATE = relevel(df$LIBRARYDATE, ref=max(levels(df$LIBRARYDATE)))
+  }
   
   return(df)
 
-}
+} # end factorFormulaColumnsInMetadata
 
-generateDeseqModel = function(raw_count_df, metadata_df, design_formula){
+createModelMatrix = function(design_formula, metadata_df){
+  
+  column_list = convertDesignFormulaToColumnList(design_formula)
+  model_matrix = model.matrix(design_formula, metadata_df)
+  
+  libraryprotocol_librarydate_flag = libraryProtocolDateTest(column_list)
+  
+  if (libraryprotocol_librarydate_flag){
+    col_to_drop = paste0('LIBRARYDATE', min(levels(metadata_df$LIBRARYDATE)))
+    col_to_drop_index = match(col_to_drop, colnames(model_matrix))
+    model_matrix = model_matrix[,-col_to_drop_index]
+  }
+  
+  return(model_matrix)
+
+} # end createModelMatrix()
+
+libraryProtocolDateTest = function(column_list){
+  
+  library_date_flag = FALSE
+  if ('LIBRARYDATE' %in% unlist(column_list)) {
+    library_date_flag = TRUE
+  }
+  
+  library_protocol_date_flag = FALSE
+  if (library_date_flag == TRUE){
+    if ('LIBRARYPROTOCOL' %in% unlist(column_list)){
+      library_protocol_date_flag = TRUE
+    }
+  }
+  
+  return(library_protocol_date_flag)
+  
+} # end libraryProtocolDateTest()
+
+generateDeseqModel = function(raw_count_df, metadata_df, model_matrix){
   
   # generate deseq dataset (summarized experiment object) from count, metadata and design formula
-  dds = DESeqDataSetFromMatrix(countData = raw_count_df, colData = metadata_df, design = design_formula)
+  dds = DESeqDataSetFromMatrix(countData = raw_count_df, colData = metadata_df, design = model_matrix)
   
   # construct the deseq model
   deseq_model = DESeq(dds, parallel=TRUE)
@@ -170,15 +226,30 @@ writeOutDataframe = function(output_path, chart_name, df){
   
 } # end writeOutDataframe()
 
-createPlots = function(prcomp_object, residual_pc_df, design_formula, output_path, output_name){
+calculatePrincipalComponents = function(residuals_df, metadata_df){
+  
+  # calculate principal components on residuals after log2 transformation (add psueocount)
+  residuals_prcomp_object = prcomp(residuals_df)
+  # convert to tibble
+  residuals_pc_df = as_tibble(residuals_prcomp_object$rotation)
+  # add rownames
+  residuals_pc_df$FASTQFILENAME = rownames(residuals_prcomp_object$rotation)
+  # join with metadata
+  residuals_pc_df = dplyr::inner_join(residuals_pc_df, metadata_df, on=FASTQFILENAME)
+  
+  return(residuals_pc_df)
+  
+} # end calculatePrincipalComponents
+
+createPcaPlots = function(log_space_residual_pc_df, design_formula, output_path, output_name){ # TODO: PLOT PCA IN LOGSPACE
   # TODO: GENERALIZE TO CREATE LIST OF PLOTS -- PASS LIST OF COLUMN VARIABLES IN TO PLOT
   # note: design_formula passed as a formula object
   
   graph_title = paste0(as.character(design_formula)[2], '_', output_name)
   
-  g_librarydate = ggplot(residual_pc_df, aes(PC1,PC2))+geom_point(aes(color=LIBRARYDATE))+ggtitle(graph_title)
-  g_libraryprotocol = ggplot(residual_pc_df, aes(PC1,PC2))+geom_point(aes(color=LIBRARYPROTOCOL))+ggtitle(graph_title)
-  g_genotype = ggplot(residual_pc_df, aes(PC1,PC2))+geom_point(aes(color=GENOTYPE))+ggtitle(graph_title)+theme(legend.position = "none")
+  g_librarydate = ggplot(log_space_residual_pc_df, aes(PC1,PC2))+geom_point(aes(color=LIBRARYDATE))+ggtitle(graph_title)
+  g_libraryprotocol = ggplot(log_space_residual_pc_df, aes(PC1,PC2))+geom_point(aes(color=LIBRARYPROTOCOL))+ggtitle(graph_title)
+  g_genotype = ggplot(log_space_residual_pc_df, aes(PC1,PC2))+geom_point(aes(color=GENOTYPE, size=GENOTYPE=='CNAG_00000'), alpha=.5)+ggtitle(graph_title)+theme(legend.position = "none")
   
   library_date_output = paste(output_path, 'pca_by_library_date.pdf', sep='/')
   ggsave(filename = library_date_output, plot = g_librarydate, device='pdf', height=8, width=12)
@@ -187,12 +258,18 @@ createPlots = function(prcomp_object, residual_pc_df, design_formula, output_pat
   library_date_output = paste(output_path, 'pca_by_genotype.pdf', sep='/')
   ggsave(filename = library_date_output, plot = g_genotype, device='pdf', height=8, width=12)
   
-  # scree_plot_output = paste(output_path, 'scree_plot.pdf', sep='/')
-  # pdf(scree_plot_output)
-  # plot(fviz_eig(prcomp_object), main = graph_title)
-  # dev.off() # this library unavailable on cluster in rnaseq_pipeline env (collision w/ some other package)
+} # end createPcaPlots()
+
+createScreePlot = function(prcomp_object, design_formula, output_path, output_name){
   
-} # end createPlots()
+  graph_title = paste0(as.character(design_formula)[2], '_', output_name)
+  
+  scree_plot_output = paste(output_path, 'scree_plot.pdf', sep='/')
+  pdf(scree_plot_output)
+  plot(fviz_eig(prcomp_object), main = graph_title)
+  dev.off() # this library unavailable on cluster in rnaseq_pipeline env (collision w/ some other package)
+  
+} # end createScreePlot()
 
 parseArguments <- function() {
   # parse and return cmd line input
@@ -213,4 +290,13 @@ parseArguments <- function() {
   return(args)
 } # end parseAarguments
 
-main(parseArguments()) # call main method
+#main(parseArguments()) # call main method
+
+input_list = list()
+input_list['raw_counts'] = '/home/chase/code/cmatkhan/misc_scripts/deseq_model/data/test_2_counts.csv'
+input_list['metadata'] = '/home/chase/code/cmatkhan/misc_scripts/deseq_model/data/test_2_metadata.csv'
+input_list['design_formula'] = '~LIBRARYPROTOCOL+LIBRARYDATE'
+input_list['output_directory'] = '/home/chase/code/cmatkhan/misc_scripts/deseq_model/results'
+input_list['name'] = 'fullrank_test'
+
+main(input_list)

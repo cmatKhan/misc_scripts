@@ -1,2 +1,2 @@
 ./tmp
-./deseq_model/results
+./deseq_model/results/*
