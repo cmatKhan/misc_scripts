@@ -290,13 +290,14 @@ parseArguments <- function() {
   return(args)
 } # end parseAarguments
 
-#main(parseArguments()) # call main method
+main(parseArguments()) # call main method
 
-input_list = list()
-input_list['raw_counts'] = '/home/chase/code/cmatkhan/misc_scripts/deseq_model/data/test_2_counts.csv'
-input_list['metadata'] = '/home/chase/code/cmatkhan/misc_scripts/deseq_model/data/test_2_metadata.csv'
-input_list['design_formula'] = '~LIBRARYPROTOCOL+LIBRARYDATE'
-input_list['output_directory'] = '/home/chase/code/cmatkhan/misc_scripts/deseq_model/results'
-input_list['name'] = 'fullrank_test'
-
-main(input_list)
+# for testing
+# input_list = list()
+# input_list['raw_counts'] = '/home/chase/code/cmatkhan/misc_scripts/deseq_model/data/test_2_counts.csv'
+# input_list['metadata'] = '/home/chase/code/cmatkhan/misc_scripts/deseq_model/data/test_2_metadata.csv'
+# input_list['design_formula'] = '~LIBRARYPROTOCOL+LIBRARYDATE'
+# input_list['output_directory'] = '/home/chase/code/cmatkhan/misc_scripts/deseq_model/results'
+# input_list['name'] = 'fullrank_test'
+# 
+# main(input_list)
