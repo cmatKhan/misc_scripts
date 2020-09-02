@@ -7,13 +7,16 @@ suppressMessages(library(tidyverse))
 suppressMessages(library(BiocParallel))
 register(MulticoreParam(10))
 
-main = function(args){
+main = function(parsed_cmd_line_args){
   # main method of script
   
   print('...Parsing cmd line arguments')
-  parsed_cmd_line_args = args
   raw_counts_df_path = parsed_cmd_line_args$raw_counts
   metadata_df_path = parsed_cmd_line_args$metadata
+  ruvr_unwanted_covariation_path = parsed_cmd_line_args$ruvr_unwanted_covaration_path
+  num_unwanted_covariates = as.double(parsed_cmd_line_args$num_unwanted_covariates)
+  protein_coding_gene_path = parsed_cmd_line_args$protein_coding_gene_path
+  genotype_results_flag = parsed_cmd_line_args$genotype_results_flag
   output_dir = parsed_cmd_line_args$output_directory
   output_name = parsed_cmd_line_args$name
   # error if no tilde in first position TODO!!
@@ -36,10 +39,17 @@ main = function(args){
   
   print('...constructing design matrix from formula')
   model_matrix = createModelMatrix(design_formula, metadata_df)
+  if (!(is.null(ruvr_unwanted_covariation_path) | is.null(num_unwanted_covariates))){
+    
+    unwanted_covariate_matrix = as.matrix(read_csv(ruvr_unwanted_covariation_path))
+    model_matrix = cbind(model_matrix, unwanted_covariate_matrix[,1:num_unwanted_covariates])
+   
+  }
   writeOutDataframe(output_path, 'model_matrix', as_tibble(model_matrix))
   
   print('...construct deseq model')
-  deseq_model = generateDeseqModel(raw_counts_df, metadata_df, model_matrix)
+  dds = createDeseqDataObject(raw_counts_df, metadata_df, model_matrix)
+  deseq_model = generateDeseqModel(dds)
   writeOutDataframe(output_path, 'size_factors', as_tibble(sizeFactors(deseq_model))) # added 20200812
   
   print('...extracting coefficient matrix')
@@ -51,6 +61,13 @@ main = function(args){
   print('...calculating model predictions')
   model_predictions = calculateModelPredictions(model_matrix, coefficient_df, rownames(raw_counts_df), metadata_df$FASTQFILENAME)
   writeOutDataframe(output_path, 'model_predictions', as_tibble(model_predictions))  # added 20200812
+  
+  if (!is.null(genotype_results_flag)){
+    if (genotype_results_flag == TRUE ){
+      print('...writing out genotype results')
+      writeGenotypeResults(deseq_model, output_path)
+    }
+  }
   
   print('...adding a pseudocount +1 and taking log2 of normalized counts')
   norm_counts_plus_pseudo = counts(deseq_model, normalized=TRUE) + 1
@@ -88,7 +105,8 @@ main = function(args){
   writeOutDataframe(output_path, 'log2_normalized_space_residual_pc', log2_norm_space_residual_pc)
   
   # plot
-  createPcaPlots(log2_norm_space_residual_pc, design_formula, output_path, output_name)
+  createResidualPcaPlots(log2_norm_space_residual_pc, design_formula, output_path, output_name)
+  createDeseqPcaPlots(deseq_model, output_path)
   print(paste0('Done with ', as.character(design_formula)[2]))
   
 } # end main()
@@ -156,10 +174,16 @@ libraryProtocolDateTest = function(column_list){
   
 } # end libraryProtocolDateTest()
 
-generateDeseqModel = function(raw_count_df, metadata_df, model_matrix){
+createDeseqDataObject = function(raw_count_df, metadata_df, model_matrix){
   
   # generate deseq dataset (summarized experiment object) from count, metadata and design formula
   dds = DESeqDataSetFromMatrix(countData = raw_count_df, colData = metadata_df, design = model_matrix)
+  
+  return(dds)
+  
+} # end createDeseqDataObject
+
+generateDeseqModel = function(dds){
   
   # construct the deseq model
   deseq_model = DESeq(dds, parallel=TRUE)
@@ -241,7 +265,22 @@ calculatePrincipalComponents = function(residuals_df, metadata_df){
   
 } # end calculatePrincipalComponents
 
-createPcaPlots = function(log_space_residual_pc_df, design_formula, output_path, output_name){ # TODO: PLOT PCA IN LOGSPACE
+edgerResidualCalculation = function(raw_counts, size_factors, model_matrix){
+  
+  # create DGEList object
+  edge_r_object = y <- DGEList(counts=raw_counts, lib.siz = colSums(raw_counts), norm.factors = size_factors)
+  # estimate common, trended and tagwise dispersions (see page 21 of edgeRUsersGuide())
+  edge_r_object = estimateDisp(edge_r_object, model_matrix)
+  # fit model
+  edge_r_model = glmFit(edge_r_object, model_matrix)
+  # extract deviance
+  deviance_residuals = residuals(edge_r_model, type="deviance")
+  
+  return(deviance_residuals)
+  
+}
+
+createResidualPcaPlots = function(log_space_residual_pc_df, design_formula, output_path, output_name){
   # TODO: GENERALIZE TO CREATE LIST OF PLOTS -- PASS LIST OF COLUMN VARIABLES IN TO PLOT
   # note: design_formula passed as a formula object
   
@@ -251,14 +290,42 @@ createPcaPlots = function(log_space_residual_pc_df, design_formula, output_path,
   g_libraryprotocol = ggplot(log_space_residual_pc_df, aes(PC1,PC2))+geom_point(aes(color=LIBRARYPROTOCOL))+ggtitle(graph_title)
   g_genotype = ggplot(log_space_residual_pc_df, aes(PC1,PC2))+geom_point(aes(color=GENOTYPE, size=GENOTYPE=='CNAG_00000'), alpha=.5)+ggtitle(graph_title)+theme(legend.position = "none")
   
-  library_date_output = paste(output_path, 'pca_by_library_date.pdf', sep='/')
+  library_date_output = paste(output_path, 'residual_pca_by_library_date.pdf', sep='/')
+  print('writing library_date PCA')
   ggsave(filename = library_date_output, plot = g_librarydate, device='pdf', height=8, width=12)
-  library_date_output = paste(output_path, 'pca_by_library_protocol.pdf', sep='/')
-  ggsave(filename = library_date_output, plot = g_libraryprotocol, device='pdf', height=8, width=12)
-  library_date_output = paste(output_path, 'pca_by_genotype.pdf', sep='/')
-  ggsave(filename = library_date_output, plot = g_genotype, device='pdf', height=8, width=12)
+  library_protocol_output = paste(output_path, 'residual_pca_by_library_protocol.pdf', sep='/')
+  print('writing library_protocol PCA')
+  ggsave(filename = library_protocol_output, plot = g_libraryprotocol, device='pdf', height=8, width=12)
+  genotype_output = paste(output_path, 'residual_pca_by_genotype.pdf', sep='/')
+  print('writing genotype PCA')
+  ggsave(filename = genotype_output, plot = g_genotype, device='pdf', height=8, width=12)
   
 } # end createPcaPlots()
+
+createDeseqPcaPlots = function(deseq_model, output_path){
+  
+  deseq_model_vst = vst(deseq_model)
+  
+  pca_genotype_output_path = paste(output_path, paste0('pca_genotype_vst.pdf'), sep='/')
+  pdf(pca_genotype_output_path)
+    pca_g = plotPCA(deseq_model_vst, intgroup='GENOTYPE') + coord_fixed() + 
+      geom_point(aes(size=GENOTYPE=='CNAG_00000'), alpha = .05) + theme(legend.position = "none") + ggtitle('genotype (with vst)')
+    plot(pca_g)
+  dev.off()
+  
+  pca_librarydate_output_path = paste(output_path, paste0('pca_library_date_vst.pdf'), sep='/')
+  pdf(pca_librarydate_output_path)
+    pca_g = plotPCA(deseq_model_vst, intgroup='LIBRARYDATE') + coord_fixed() + ggtitle('library date (with vst)')
+    plot(pca_g)
+  dev.off()
+  
+  pca_libraryprotocol_output_path = paste(output_path, paste0('pca_library_protocol_vst.pdf'), sep='/')
+  pdf(pca_libraryprotocol_output_path)
+    pca_g = plotPCA(deseq_model_vst, intgroup='LIBRARYPROTOCOL') + coord_fixed() + ggtitle('library protocol (with vst)')
+    plot(pca_g)
+  dev.off()
+  
+} # createDeseqPcaPlots()
 
 createScreePlot = function(prcomp_object, design_formula, output_path, output_name){
   
@@ -271,6 +338,67 @@ createScreePlot = function(prcomp_object, design_formula, output_path, output_na
   
 } # end createScreePlot()
 
+writeGenotypeResults = function(deseq_model, output_path){
+  # write out results for for each genotype against all wildtype, and by library protocol
+  # if date flag is true, also include contrast against each genotype by date
+  
+  de_results_directory = paste(output_path, 'de_results', sep='/')
+  dir.create(de_results_directory)
+  
+  # for genotype in resultsNames
+  genotype_list = resultsNames(deseq_model)[startsWith(resultsNames(deseq_model), 'GENOTYPE')]
+  for (genotype in genotype_list){
+    
+    # create results table
+    results_table_output_path = paste(de_results_directory, paste0('de_results_', genotype, '.csv'), sep='/')
+    results_table = results(deseq_model, name = genotype)
+    write_csv(as_tibble(results_table), results_table_output_path)
+    
+    # plot ma
+    ma_plot_output_path = paste(de_results_directory, paste0('ma_plot_', genotype, '.pdf'), sep='/')
+    pdf(ma_plot_output_path)
+        DESeq2::plotMA(results_table, ylim = c(-6,6), main=genotype)
+    dev.off()
+    
+    pval_hist_output_path = paste(de_results_directory, paste0('pval_hist_', genotype, '.pdf'), sep='/')
+    pdf(pval_hist_output_path)
+        g = ggplot(as(results_table, "data.frame"), aes(x = pvalue)) +
+          geom_histogram(binwidth = 0.01, fill = "Royalblue", boundary = 0)
+        plot(g)
+    dev.off()
+    
+  }
+  
+} # end writeGenotypeResults()
+
+# writeeResults = function(model_matrix, deseq_model, output_path){
+#   # example method, extrating genotype and creating contast vector
+#   
+#   # for genotype in resultsNames
+#   genotype_list = resultsNames(deseq_model)[startsWith(resultsNames(deseq_model), 'GENOTYPE')]
+#   for (genotype in genotype_list){
+#     genotype_matrix_model = model_matrix[model_matrix[, genotype] == 1,]
+#     coefficient_model_vector = as.numeric(apply(genotype_matrix_model, 2,
+#                                                 function(genotype_model_matrix_column) 
+#                                                   ifelse(1 %in% genotype_model_matrix_column, 1, 0)))
+#     results_table = as.tibble(results(deseq_model, contrast = coefficient_model_vector, tidy=TRUE))
+#     output_full_path = paste0(output_path, '/', 'results', '/', 'de_results_lib_prep_date_', genotype, '.csv')
+#     write_csv(results_table, output_full_path)
+#   }
+#   
+# }
+
+# notes = function(){
+#   
+#   x = La.svd(as.matrix(residual_log_norm_space_df), nu=6969, nv=196)
+#   diag(sing_d) = x$d
+#   binder = matrix(rep(0, (6969-196) * 196), nrow=6969-196, ncol=196)
+#   rbind(sing_d, binder)
+#   sing_d_full = rbind(sing_d, binder)
+#   w = x$u %*% sing_d_full
+#   
+# }
+
 parseArguments <- function() {
   # parse and return cmd line input
   
@@ -279,6 +407,12 @@ parseArguments <- function() {
                 help='raw count matrix (genes x samples)'),
     make_option(c('-m', '--metadata'), 
                 help='metadata with all samples corresponding to the columns of the count data x metadata. must include the columns in the design formula'),
+    make_option(c('-u', '--ruvr_unwanted_covaration_path'),
+                help='path to sheet containing sample x k columns of unwanted variation'),
+    make_option(c('-k', '--num_unwanted_covariates'),
+                help='number of unwanted covariates to include in the model'),
+    make_option(c('-g', '--genotype_results_flag'), action='store_true',
+                help='set -g (no input) to write out all genotype results to subdiretory of results directory'),
     make_option(c('-d', '--design_formula'), 
                 help='eg ~LIBRARYDATE+GENOTYPE currently does not accept variables with continuous data. base level will be the first level in the factored column(s). Currently not set up for interaction terms'),
     make_option(c('-o', '--output_directory'), 
@@ -292,12 +426,15 @@ parseArguments <- function() {
 
 main(parseArguments()) # call main method
 
-# for testing
+#for testing
 # input_list = list()
 # input_list['raw_counts'] = '/home/chase/code/cmatkhan/misc_scripts/deseq_model/data/test_2_counts.csv'
 # input_list['metadata'] = '/home/chase/code/cmatkhan/misc_scripts/deseq_model/data/test_2_metadata.csv'
-# input_list['design_formula'] = '~LIBRARYPROTOCOL+LIBRARYDATE'
+# input_list['design_formula'] = '~LIBRARYPROTOCOL+LIBRARYDATE+GENOTYPE'
+# input_list['ruvr_unwanted_covaration_path'] = '/home/chase/code/cmatkhan/misc_scripts/deseq_model/results/fullrank_test//unwanted_variation.csv'
+# input_list['num_unwanted_covariates'] = 3
+# input_list['genotype_results_flag'] = TRUE
 # input_list['output_directory'] = '/home/chase/code/cmatkhan/misc_scripts/deseq_model/results'
-# input_list['name'] = 'fullrank_test'
+# input_list['name'] = 'fullrank_test_3'
 # 
 # main(input_list)
