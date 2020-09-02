@@ -5,7 +5,7 @@ suppressMessages(library(DESeq2))
 suppressMessages(library(tidyverse))
 #suppressMessages(library(factoextra))
 suppressMessages(library(BiocParallel))
-register(MulticoreParam(10))
+register(MulticoreParam(20))
 
 main = function(parsed_cmd_line_args){
   # main method of script
@@ -37,7 +37,7 @@ main = function(parsed_cmd_line_args){
   print('...factoring design formula columns')
   metadata_df = factorFormulaColumnsInMetadata(design_formula, metadata_df)
   
-  print('...constructing design matrix from formula')
+  print('...constructing design matrix')
   model_matrix = createModelMatrix(design_formula, metadata_df)
   if (!(is.null(ruvr_unwanted_covariation_path) | is.null(num_unwanted_covariates))){
     
