@@ -2,7 +2,7 @@
 
 #SBATCH --mem-per-cpu=20G
 #SBATCH --cpus-per-task=10
-#SBATCH -J libraryprotocol
+#SBATCH -J libraryprotocol_model
 #SBATCH -o /scratch/mblab/chasem/rnaseq_pipeline/sbatch_log/libraryprotocol_model.out
 
 ml rnaseq_pipeline
