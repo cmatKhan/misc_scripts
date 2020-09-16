@@ -447,7 +447,7 @@ parseArguments <- function() {
   return(args)
 } # end parseAarguments
 
-# main(parseArguments()) # call main method
+main(parseArguments()) # call main method
 
 #for testing
 # input_list = list()
@@ -462,4 +462,4 @@ parseArguments <- function() {
 
 #deviance_df = tibble(gene_id = protein_coding_gene_id_column, deviance_of_fitted_model = mcols(deseq_model)$deviance, saturated_model_deviance = -2*rowSums(dnbinom(counts(deseq_model), mu=counts(deseq_model), size=1/dispersions(deseq_model), log=TRUE)))
 
-main(input_list)
+# main(input_list)
