@@ -5,7 +5,7 @@ suppressMessages(library(DESeq2))
 suppressMessages(library(tidyverse))
 #suppressMessages(library(factoextra))
 suppressMessages(library(BiocParallel))
-register(MulticoreParam(20))
+register(MulticoreParam(10))
 
 main = function(parsed_cmd_line_args){
   # main method of script
@@ -50,64 +50,68 @@ main = function(parsed_cmd_line_args){
   print('...construct deseq model')
   dds = createDeseqDataObject(raw_counts_df, metadata_df, model_matrix)
   deseq_model = generateDeseqModel(dds)
-  writeOutDataframe(output_path, 'size_factors', as_tibble(sizeFactors(deseq_model))) # added 20200812
+  deseq_model_path = paste(output_path, 'deseq_model.rds', sep='/')
+  saveRDS(deseq_model, deseq_model_path)
   
-  print('...extracting coefficient matrix')
-  coefficient_df = coef(deseq_model)
-  rownames(coefficient_df) = rownames(raw_counts_df)
-  coefficient_df = as_tibble(coefficient_df)
-  writeOutDataframe(output_path, 'coefficients', coefficient_df)
-  
-  print('...calculating model predictions')
-  model_predictions = calculateModelPredictions(model_matrix, coefficient_df, rownames(raw_counts_df), metadata_df$FASTQFILENAME)
-  writeOutDataframe(output_path, 'model_predictions', as_tibble(model_predictions))  # added 20200812
-  
-  if (!is.null(genotype_results_flag)){
-    if (genotype_results_flag == TRUE ){
-      print('...writing out genotype results')
-      writeGenotypeResults(deseq_model, output_path)
-    }
-  }
-  
-  print('...adding a pseudocount +1 and taking log2 of normalized counts')
-  norm_counts_plus_pseudo = counts(deseq_model, normalized=TRUE) + 1
-  log2_norm_counts = log2(norm_counts_plus_pseudo)
-  writeOutDataframe(output_path, 'log2_norm_counts', as_tibble(log2_norm_counts)) # added 20200812
-  
-  # calculate residuals
-  residual_log_norm_space_df = log2_norm_counts - model_predictions
-  residual_log_norm_space_df = as_tibble(residual_log_norm_space_df)
-  residual_log_norm_space_df[is.na(residual_log_norm_space_df)] = 0 # set NA to 0
-  writeOutDataframe(output_path, 'log2_norm_space_residuals', residual_log_norm_space_df)
-  
-  residual_norm_space_df = norm_counts_plus_pseudo - apply(model_predictions, 2, function(x) 2**x) # unlog the model predictions
-  residual_norm_space_df = as_tibble(residual_norm_space_df)
-  residual_norm_space_df[is.na(residual_norm_space_df)] = 0 # set NA to 0
-  writeOutDataframe(output_path, 'normalized_space_residuals', residual_norm_space_df)
-  
-  # return residuals to raw count scale
-  unlogged_unnormalized_residual_df = round(as_tibble(unNormalize(residual_norm_space_df, sizeFactors(deseq_model)))) # NOTE: DESEQ only accepts ints. maybe able to submit directly to nbinomwald
-  writeOutDataframe(output_path, 'raw_space_residuals', unlogged_unnormalized_residual_df)
-  
-  # calculate r_squared
-  print('...calculating correlation coefficient')
-  tss = calculateTotalSumOfSquares(norm_counts_plus_pseudo)
-  rss = calculateResidualSumOfSquares(residual_norm_space_df)
-  r_squared = 1 - (rss/tss)
-  r_squared_df = tibble(name=output_name, r_2=r_squared)
-  writeOutDataframe(output_path, 'r_squared', r_squared_df)
-
-  # calculate principal components on residuals
-  normalized_space_residual_pc = calculatePrincipalComponents(residual_norm_space_df, metadata_df)
-  writeOutDataframe(output_path, 'normalized_space_residual_pc', normalized_space_residual_pc)
-  
-  log2_norm_space_residual_pc = calculatePrincipalComponents(residual_log_norm_space_df, metadata_df)
-  writeOutDataframe(output_path, 'log2_normalized_space_residual_pc', log2_norm_space_residual_pc)
-  
-  # plot
-  createResidualPcaPlots(log2_norm_space_residual_pc, design_formula, output_path, output_name)
-  createDeseqPcaPlots(deseq_model, output_path)
-  print(paste0('Done with ', as.character(design_formula)[2]))
+  # writeOutDataframe(output_path, 'size_factors', as_tibble(sizeFactors(deseq_model))) # added 20200812
+  # writeOutDataframe(output_path, 'dispersions', as_tibble(dispersions(deseq_model))) # added 20200911
+  # 
+  # print('...extracting coefficient matrix')
+  # coefficient_df = coef(deseq_model)
+  # rownames(coefficient_df) = rownames(raw_counts_df)
+  # coefficient_df = as_tibble(coefficient_df)
+  # writeOutDataframe(output_path, 'coefficients', coefficient_df)
+  # 
+  # print('...calculating model predictions')
+  # model_predictions = calculateModelPredictions(model_matrix, rownames(raw_counts_df), metadata_df$FASTQFILENAME)
+  # writeOutDataframe(output_path, 'model_predictions_raw_count_space', as_tibble(model_predictions))  # added 20200812
+  # 
+  # if (!is.null(genotype_results_flag)){
+  #   if (genotype_results_flag == TRUE ){
+  #     print('...writing out genotype results')
+  #     writeGenotypeResults(deseq_model, output_path)
+  #   }
+  # }
+  # 
+  # print('...adding a pseudocount +1 and taking log2 of normalized counts')
+  # norm_counts_plus_pseudo = counts(deseq_model, normalized=TRUE) + 1
+  # log2_norm_counts = log2(norm_counts_plus_pseudo)
+  # writeOutDataframe(output_path, 'log2_norm_counts', as_tibble(log2_norm_counts)) # added 20200812
+  # 
+  # # calculate residuals
+  # residual_log_norm_space_df = log2_norm_counts - log2(model_predictions)
+  # residual_log_norm_space_df = as_tibble(residual_log_norm_space_df)
+  # residual_log_norm_space_df[is.na(residual_log_norm_space_df)] = 0 # set NA to 0
+  # writeOutDataframe(output_path, 'log2_norm_space_residuals', residual_log_norm_space_df)
+  # 
+  # # residual_norm_space_df = norm_counts_plus_pseudo - 2^model_predictions # unlog the model predictions
+  # # residual_norm_space_df = as_tibble(residual_norm_space_df)
+  # # residual_norm_space_df[is.na(residual_norm_space_df)] = 0 # set NA to 0
+  # # writeOutDataframe(output_path, 'normalized_space_residuals', residual_norm_space_df)
+  # 
+  # # return residuals to raw count scale
+  # unlogged_unnormalized_residual_df = raw_counts_df - model_predictions
+  # writeOutDataframe(output_path, 'raw_space_residuals', unlogged_unnormalized_residual_df)
+  # 
+  # # calculate r_squared
+  # print('...calculating correlation coefficient')
+  # tss = calculateTotalSumOfSquares(norm_counts_plus_pseudo)
+  # rss = calculateResidualSumOfSquares(residual_norm_space_df)
+  # r_squared = 1 - (rss/tss)
+  # r_squared_df = tibble(name=output_name, r_2=r_squared)
+  # writeOutDataframe(output_path, 'r_squared', r_squared_df)
+  # 
+  # # calculate principal components on residuals
+  # normalized_space_residual_pc = calculatePrincipalComponents(residual_norm_space_df, metadata_df)
+  # writeOutDataframe(output_path, 'normalized_space_residual_pc', normalized_space_residual_pc)
+  # 
+  # log2_norm_space_residual_pc = calculatePrincipalComponents(residual_log_norm_space_df, metadata_df)
+  # writeOutDataframe(output_path, 'log2_normalized_space_residual_pc', log2_norm_space_residual_pc)
+  # 
+  # # plot
+  # createResidualPcaPlots(log2_norm_space_residual_pc, design_formula, output_path, output_name)
+  # createDeseqPcaPlots(deseq_model, output_path)
+  # print(paste0('Done with ', as.character(design_formula)[2]))
   
 } # end main()
 
@@ -192,19 +196,53 @@ generateDeseqModel = function(dds){
   
 } # end generateDeseqModel()
 
-calculateModelPredictions = function(model_matrix, coefficient_matrix, gene_list, sample_list){
+calculateModelPredictions = function(deseq_model, gene_list, sample_list){
+  #' This method extracts the predicted means of each gene in each sample. See the 2014 deseq paper, equations
+  #' 1 and 2 in the methods section.
+  #' s is the size factors, by default one per sample, calculated by deseq (see paper). extract from deseq_model
+  #' with sizeFactors(deseq_model)
+  #' variable are named according to the methods section, equations 1 and 2, of the 2014 deseq paper
+  #' NOTE: returns in scale of raw_counts
+  
+  # this was used prior to 20200911, and is incorrect
+  # # model matrix is m=sample  n=model predictors, coefficient matrix is m=gene n=predictors
+  # y_hat = model_matrix %*% t(coefficient_matrix)
+  # # return to m=gene n=sample
+  # y_hat = t(y_hat) # michael pointed out that this is equivalent to multiplicated below, implemented 20200911
   
   # model matrix is m=sample  n=model predictors, coefficient matrix is m=gene n=predictors
-  y_hat = model_matrix %*% t(coefficient_matrix)
-  # return to m=gene n=sample
-  y_hat = t(y_hat)
-  # name rows and columns
-  rownames(y_hat) = gene_list
-  colnames(y_hat) = sample_list
+  log_q = coef(deseq_model) %*% t(design(deseq_model))
+  # q is i=gene j=samples
+  q = 2^log_q # exponentiate to un-do the log2 transformation
+  mu = t(t(q)*sizeFactors(deseq_model)) # these are now the predicted counts in the scale of the raw_counts
+  # to test the above multiplication
+  # mdat <- matrix(c(1,2,3, 11,12,13), nrow = 3, ncol = 2, byrow=FALSE)
+  #t(t(mdat) * seq(1,2))
   
-  return(y_hat)
+  # name rows and columns
+  rownames(mu) = gene_list
+  colnames(mu) = sample_list
+  
+  return(mu)
   
 } # end calculateModelPredictions()
+
+calculateDispersionResiduals = function(deseq_model){
+  #' Deviance Residuals are:
+  #'     Residual Deviance = 2(log_likelihood(Saturated_Model) - log_likelihood(Proposed_Model))
+  #'           (this is analogous to residuals in ordinary least squares per statsquest)
+  #'  The below function is based on a response from Michael love here:
+  #'      http://supportupgrade.bioconductor.org/p/117448/   
+  
+  # per michael love: The deviance as calculated by DESeq2 is -2 times the log likelihood
+  deviance_of_fitted_model = mcols(deseq_model)$deviance
+  # CHECK THE NEGATIVE WITH GROUP.
+  deviance_of_saturated_model = -2*rowSums(dnbinom(counts(deseq_model), mu=counts(deseq_model), size=1/dispersions(deseq_model), log=TRUE))
+  # note: this is from michael love -- need to check signs
+  residual_deviance = deviance_of_fitted_model - deviance_of_saturated_model
+  
+  return(residual_deviance)
+}
 
 calculateTotalSumOfSquares = function(log2_norm_count_df){
   
@@ -264,21 +302,6 @@ calculatePrincipalComponents = function(residuals_df, metadata_df){
   return(residuals_pc_df)
   
 } # end calculatePrincipalComponents
-
-edgerResidualCalculation = function(raw_counts, size_factors, model_matrix){
-  
-  # create DGEList object
-  edge_r_object = y <- DGEList(counts=raw_counts, lib.siz = colSums(raw_counts), norm.factors = size_factors)
-  # estimate common, trended and tagwise dispersions (see page 21 of edgeRUsersGuide())
-  edge_r_object = estimateDisp(edge_r_object, model_matrix)
-  # fit model
-  edge_r_model = glmFit(edge_r_object, model_matrix)
-  # extract deviance
-  deviance_residuals = residuals(edge_r_model, type="deviance")
-  
-  return(deviance_residuals)
-  
-}
 
 createResidualPcaPlots = function(log_space_residual_pc_df, design_formula, output_path, output_name){
   # TODO: GENERALIZE TO CREATE LIST OF PLOTS -- PASS LIST OF COLUMN VARIABLES IN TO PLOT
@@ -424,17 +447,19 @@ parseArguments <- function() {
   return(args)
 } # end parseAarguments
 
-main(parseArguments()) # call main method
+# main(parseArguments()) # call main method
 
 #for testing
 # input_list = list()
 # input_list['raw_counts'] = '/home/chase/code/cmatkhan/misc_scripts/deseq_model/data/test_2_counts.csv'
 # input_list['metadata'] = '/home/chase/code/cmatkhan/misc_scripts/deseq_model/data/test_2_metadata.csv'
-# input_list['design_formula'] = '~LIBRARYPROTOCOL+LIBRARYDATE+GENOTYPE'
+# input_list['design_formula'] = '~LIBRARYDATE+GENOTYPE'
 # input_list['ruvr_unwanted_covaration_path'] = '/home/chase/code/cmatkhan/misc_scripts/deseq_model/results/fullrank_test//unwanted_variation.csv'
 # input_list['num_unwanted_covariates'] = 3
 # input_list['genotype_results_flag'] = TRUE
 # input_list['output_directory'] = '/home/chase/code/cmatkhan/misc_scripts/deseq_model/results'
-# input_list['name'] = 'fullrank_test_3'
-# 
-# main(input_list)
+# input_list['name'] = 'deseq_output_test'
+
+#deviance_df = tibble(gene_id = protein_coding_gene_id_column, deviance_of_fitted_model = mcols(deseq_model)$deviance, saturated_model_deviance = -2*rowSums(dnbinom(counts(deseq_model), mu=counts(deseq_model), size=1/dispersions(deseq_model), log=TRUE)))
+
+main(input_list)
