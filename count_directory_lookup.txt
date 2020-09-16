@@ -48,10 +48,13 @@
 /scratch/mblab/chasem/rnaseq_pipeline/align_count_results/run_3993_samples/count
 /scratch/mblab/chasem/rnaseq_pipeline/align_count_results/run_4011_samples/count
 /scratch/mblab/chasem/rnaseq_pipeline/align_count_results/run_4019_samples/count
+/scratch/mblab/chasem/rnaseq_pipeline/align_count_results/run_4027_samples/count
 /scratch/mblab/chasem/rnaseq_pipeline/align_count_results/run_4040_samples/count
 /scratch/mblab/chasem/rnaseq_pipeline/align_count_results/run_4058_samples/count
 /scratch/mblab/chasem/rnaseq_pipeline/align_count_results/run_4144_samples/count
+/scratch/mblab/chasem/rnaseq_pipeline/align_count_results/run_4178_samples/count
 /scratch/mblab/chasem/rnaseq_pipeline/align_count_results/run_4267_samples/count
+/scratch/mblab/chasem/rnaseq_pipeline/align_count_results/run_4422_samples/count
 /scratch/mblab/chasem/rnaseq_pipeline/align_count_results/run_468_samples/count
 /scratch/mblab/chasem/rnaseq_pipeline/align_count_results/run_480_samples/count
 /scratch/mblab/chasem/rnaseq_pipeline/align_count_results/run_869_samples/count
