@@ -454,12 +454,10 @@ main(parseArguments()) # call main method
 # input_list['raw_counts'] = '/home/chase/code/cmatkhan/misc_scripts/deseq_model/data/test_2_counts.csv'
 # input_list['metadata'] = '/home/chase/code/cmatkhan/misc_scripts/deseq_model/data/test_2_metadata.csv'
 # input_list['design_formula'] = '~LIBRARYDATE+GENOTYPE'
-# input_list['ruvr_unwanted_covaration_path'] = '/home/chase/code/cmatkhan/misc_scripts/deseq_model/results/fullrank_test//unwanted_variation.csv'
+# input_list['ruvr_unwanted_covaration_path'] = '/home/chase/projects/brentlab/deseq_model/data/unwanted_variation_covariate_matrix.csv'
 # input_list['num_unwanted_covariates'] = 3
 # input_list['genotype_results_flag'] = TRUE
 # input_list['output_directory'] = '/home/chase/code/cmatkhan/misc_scripts/deseq_model/results'
 # input_list['name'] = 'deseq_output_test'
-
-#deviance_df = tibble(gene_id = protein_coding_gene_id_column, deviance_of_fitted_model = mcols(deseq_model)$deviance, saturated_model_deviance = -2*rowSums(dnbinom(counts(deseq_model), mu=counts(deseq_model), size=1/dispersions(deseq_model), log=TRUE)))
 
 # main(input_list)
